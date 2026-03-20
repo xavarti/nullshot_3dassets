@@ -424,26 +424,24 @@ function spawnZombie(){
   const parts=buildZombie();
   parts.root.position.set(Math.cos(angle)*r,GROUND_Y,Math.sin(angle)*r);
   scene.add(parts.root);
-  zombies.push({...parts,hp:60,maxHp:60,lastAtk:0,walkT:0,dead:false,deathT:0,pieces:[]});
+  zombies.push({...parts,hp:60,maxHp:60,lastAtk:0,walkT:0});
 }
 
 // Dismemberment — detach limb as ragdoll piece
 function detachLimb(z,limb){
   const worldPos=new THREE.Vector3();
   limb.pivot.getWorldPosition(worldPos);
-  scene.remove(z.root);
   const piece=limb.pivot.clone();
   piece.position.copy(worldPos);
   scene.add(piece);
   const vel={
-    x:(Math.random()-.5)*6,
-    y:3+Math.random()*4,
-    z:(Math.random()-.5)*6,
-    rx:(Math.random()-.5)*8,
-    ry:(Math.random()-.5)*8,
+    x:(Math.random()-.5)*7,
+    y:2.5+Math.random()*5,
+    z:(Math.random()-.5)*7,
+    rx:(Math.random()-.5)*10,
+    ry:(Math.random()-.5)*10,
   };
-  z.pieces.push({mesh:piece,vel,age:0});
-  scene.add(z.root);
+  allPieces.push({mesh:piece,vel,age:0}); // ← global array
 }
 
 function killZombie(z,idx){
@@ -713,24 +711,45 @@ function hlKey(c,on){
 }
 
 // ── GTA Camera ────────────────────────────────────────────────────────────────
-let camYaw=Math.PI, camPitch=0.35, camDist=5.5;
+let camYaw=Math.PI, camPitch=0.42, camDist=5.5;
 let rmbDown=false, lastMx=0, lastMy=0;
-let camAutoYaw=Math.PI; // auto-follows movement
 
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+// LMB click on canvas = lock mouse for free camera
+canvas.addEventListener('click',()=>{
+  if(document.getElementById('shop').classList.contains('open')) return;
+  if(!document.pointerLockElement) canvas.requestPointerLock();
+});
+
+// RMB = drag camera without lock
 canvas.addEventListener('mousedown',e=>{
   if(e.button===2){rmbDown=true;lastMx=e.clientX;lastMy=e.clientY;canvas.classList.add('rotating');}
 });
 window.addEventListener('mouseup',e=>{
   if(e.button===2){rmbDown=false;canvas.classList.remove('rotating');}
 });
+
 window.addEventListener('mousemove',e=>{
-  if(!rmbDown) return;
-  const dx=e.clientX-lastMx, dy=e.clientY-lastMy;
-  camYaw-=dx*0.004; camPitch-=dy*0.003;
+  let dx=0, dy=0;
+  if(document.pointerLockElement===canvas){
+    // pointer lock — raw delta, no position tracking needed
+    dx=e.movementX; dy=e.movementY;
+  } else if(rmbDown){
+    dx=e.clientX-lastMx; dy=e.clientY-lastMy;
+    lastMx=e.clientX; lastMy=e.clientY;
+  } else return;
+  camYaw  -=dx*0.004;
+  camPitch-=dy*0.003;
   camPitch=Math.max(0.08,Math.min(1.1,camPitch));
-  lastMx=e.clientX; lastMy=e.clientY;
 });
+
+document.addEventListener('pointerlockchange',()=>{
+  document.getElementById('statusbar').textContent=document.pointerLockElement
+    ?'ESC = release mouse · WASD = move · LMB = attack · B = shop'
+    :'LMB = lock mouse | RMB drag = camera · scroll = zoom · B = shop';
+});
+
 canvas.addEventListener('wheel',e=>{
   camDist=Math.max(2,Math.min(12,camDist+e.deltaY*0.01));
 },{passive:true});
@@ -773,8 +792,7 @@ window.addEventListener('mousedown',e=>{
 const clock=new THREE.Clock();
 const camTargetV=new THREE.Vector3(0,0.8,0);
 let gameStarted=false,lastZombieSpawn=0;
-// ragdoll pieces
-const pieces=[];
+const allPieces=[]; // global ragdoll pieces
 
 function startGame(){
   document.getElementById('splash').style.display='none';
@@ -812,8 +830,8 @@ function animate(){
     const iFwd=keys['KeyW']?1:keys['KeyS']?-1:0;
     const iRgt=keys['KeyD']?1:keys['KeyA']?-1:0;
     isMoving=iFwd!==0||iRgt!==0;
-    const mdx=Math.sin(camYaw)*iFwd-Math.cos(camYaw)*iRgt;
-    const mdz=Math.cos(camYaw)*iFwd+Math.sin(camYaw)*iRgt;
+    const mdx=Math.sin(camYaw)*iFwd+Math.cos(camYaw)*iRgt;
+    const mdz=Math.cos(camYaw)*iFwd-Math.sin(camYaw)*iRgt;
     const ml=Math.sqrt(mdx*mdx+mdz*mdz);
     const nx=ml>0.01?mdx/ml:0,nz=ml>0.01?mdz/ml:0;
     charPos.x+=nx*playerSpd*dt;
@@ -880,33 +898,20 @@ function animate(){
     if(!isDead&&dist<1.0&&now-z.lastAtk>1400){z.lastAtk=now;takeDamage(8,'zombie');}
   }
 
-  // ragdoll pieces
-  for(let i=pieces.length-1;i>=0;i--){
-    const p=pieces[i]; p.age+=dt;
+  // ragdoll pieces — single global loop
+  for(let i=allPieces.length-1;i>=0;i--){
+    const p=allPieces[i]; p.age+=dt;
     p.mesh.position.x+=p.vel.x*dt;
     p.mesh.position.y+=p.vel.y*dt;
     p.mesh.position.z+=p.vel.z*dt;
-    p.vel.y-=12*dt;
-    if(p.mesh.position.y<0){p.mesh.position.y=0;p.vel.y*=-0.3;p.vel.x*=0.7;p.vel.z*=0.7;}
+    p.vel.y-=14*dt;
+    if(p.mesh.position.y<0.05){
+      p.mesh.position.y=0.05;
+      p.vel.y*=-0.28; p.vel.x*=0.65; p.vel.z*=0.65;
+    }
     p.mesh.rotation.x+=p.vel.rx*dt;
     p.mesh.rotation.y+=p.vel.ry*dt;
-    if(p.age>4){scene.remove(p.mesh);pieces.splice(i,1);}
-  }
-  // collect pieces from killed zombies
-  for(const z of zombies){
-    if(z.pieces){
-      for(let i=z.pieces.length-1;i>=0;i--){
-        const piece=z.pieces[i]; piece.age+=dt;
-        piece.mesh.position.x+=piece.vel.x*dt;
-        piece.mesh.position.y+=piece.vel.y*dt;
-        piece.mesh.position.z+=piece.vel.z*dt;
-        piece.vel.y-=12*dt;
-        if(piece.mesh.position.y<0){piece.mesh.position.y=0;piece.vel.y*=-0.3;piece.vel.x*=0.7;piece.vel.z*=0.7;}
-        piece.mesh.rotation.x+=piece.vel.rx*dt;
-        piece.mesh.rotation.y+=piece.vel.ry*dt;
-        if(piece.age>4){scene.remove(piece.mesh);z.pieces.splice(i,1);}
-      }
-    }
+    if(p.age>5){scene.remove(p.mesh);allPieces.splice(i,1);}
   }
 
   // remote players

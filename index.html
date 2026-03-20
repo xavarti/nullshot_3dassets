@@ -1,334 +1,497 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Neon Vibe Rooms 🚀</title>
-    <style>
-        :root { --bg: #050510; --neon-cyan: #00ffff; --neon-pink: #ff00ff; --glass: rgba(20, 20, 40, 0.8); }
-        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background-color: var(--bg); color: white; }
-        
-        /* 3D Canvas Background */
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
-        
-        /* UI Overlay */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; display: flex; flex-direction: column; }
-        
-        /* Header & Tabs */
-        .header { background: var(--glass); padding: 15px; border-bottom: 1px solid var(--neon-cyan); display: flex; gap: 20px; pointer-events: auto; }
-        .tab-btn { background: transparent; color: white; border: 1px solid #555; padding: 10px 20px; cursor: pointer; text-transform: uppercase; font-weight: bold; transition: 0.3s; }
-        .tab-btn.active { border-color: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); color: var(--neon-cyan); }
-        .tab-btn.pink { border-color: var(--neon-pink); }
-        .tab-btn.pink.active { border-color: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); color: var(--neon-pink); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Walk — Public World</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Space Mono',monospace}
+canvas{width:100vw;height:100vh;display:block}
 
-        /* Content Areas */
-        .content { flex: 1; padding: 20px; display: none; pointer-events: auto; width: 400px; background: var(--glass); border-right: 1px solid var(--neon-cyan); overflow-y: auto; }
-        .content.active { display: flex; flex-direction: column; gap: 15px; }
-        
-        /* Forms & Inputs */
-        textarea, input { background: rgba(0,0,0,0.5); border: 1px solid #555; color: var(--neon-cyan); padding: 10px; font-family: monospace; width: 90%; resize: vertical; }
-        button { background: var(--neon-cyan); color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 5px; }
-        button:hover { box-shadow: 0 0 15px var(--neon-cyan); }
-        button.pink-btn { background: var(--neon-pink); }
-        button.pink-btn:hover { box-shadow: 0 0 15px var(--neon-pink); }
+/* ── Splash ── */
+#splash{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);z-index:100;flex-direction:column;gap:18px;
+}
+#splash h1{font-size:22px;color:#fff;letter-spacing:0.12em;font-weight:700}
+#splash p{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-align:center;line-height:1.8}
+#join-btn{
+  margin-top:6px;padding:12px 36px;border-radius:8px;cursor:pointer;font-size:13px;
+  background:rgba(167,139,250,0.18);border:1px solid rgba(167,139,250,0.5);
+  color:rgba(167,139,250,1);font-family:'Space Mono',monospace;letter-spacing:0.08em;
+  transition:background 0.15s,transform 0.1s;
+}
+#join-btn:hover{background:rgba(167,139,250,0.32);transform:translateY(-1px)}
+#join-btn:active{transform:translateY(0)}
+#join-btn:disabled{opacity:0.4;cursor:default;transform:none}
+#splash-status{font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.06em;min-height:16px}
 
-        .chat-box { flex: 1; border: 1px solid #555; padding: 10px; overflow-y: auto; min-height: 150px; background: rgba(0,0,0,0.3); }
-        .info-panel { font-size: 0.9em; color: #aaa; border-left: 3px solid var(--neon-cyan); padding-left: 10px; margin-bottom: 10px; }
-        
-        /* Controls Hint */
-        .controls { position: absolute; bottom: 20px; right: 20px; background: var(--glass); padding: 10px; border: 1px solid var(--neon-pink); color: var(--neon-pink); text-align: right; pointer-events: none; }
-    </style>
-    <!-- Подключаем Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+/* ── HUD ── */
+#hud{position:absolute;inset:0;pointer-events:none}
+
+/* Status pill */
+#netpill{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;padding:5px 14px;
+}
+#netdot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0}
+#netdot.host{background:#c084fc}
+#netlabel{font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:0.06em}
+#playercount{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.04em}
+
+/* Keys */
+#keys{
+  position:absolute;top:14px;left:16px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.kr{display:flex;gap:3px}
+.k{
+  width:28px;height:28px;border-radius:5px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:rgba(255,255,255,0.45);transition:all 0.07s;
+}
+.k.wide{width:72px}
+.k.active{background:rgba(167,139,250,0.3);border-color:rgba(167,139,250,0.65);color:#fff}
+
+#statusbar{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:0.05em;white-space:nowrap;
+}
+
+/* Nametags */
+.nametag{
+  position:absolute;transform:translate(-50%,-100%);pointer-events:none;
+  background:rgba(0,0,0,0.65);border:1px solid rgba(255,255,255,0.1);
+  border-radius:4px;padding:2px 7px;
+  font-size:9px;color:rgba(255,255,255,0.7);white-space:nowrap;
+}
+</style>
 </head>
 <body>
+<canvas id="c"></canvas>
 
-    <div id="canvas-container"></div>
+<!-- Splash -->
+<div id="splash">
+  <h1>SPACE WALK</h1>
+  <p>public world · everyone joins the same space<br>move with WASD · look with mouse · SPACE to jump</p>
+  <button id="join-btn">ENTER WORLD</button>
+  <div id="splash-status">ready</div>
+</div>
 
-    <div id="ui-layer">
-        <div class="header">
-            <button class="tab-btn active" onclick="switchTab('public')">🌐 Public Room (BaaS)</button>
-            <button class="tab-btn pink" onclick="switchTab('private')">🔒 Private Room (WebRTC)</button>
-        </div>
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div id="netpill">
+    <div id="netdot"></div>
+    <span id="netlabel">connecting…</span>
+    <span id="playercount"></span>
+  </div>
 
-        <!-- ТАБ 1: PUBLIC ROOM -->
-        <div id="tab-public" class="content active">
-            <h2 style="color: var(--neon-cyan)">Public Echo Room</h2>
-            <div class="info-panel">
-                <strong>Как реализовано:</strong><br>
-                Здесь мы используем классический подход с сервером (WebSocket). Сейчас мы подключены к публичному Echo-серверу (Postman). <br><br>
-                Когда ты двигаешься (WASD), твой клиент отправляет JSON с координатами на сервер. Сервер пересылает этот JSON всем в комнате. 
-                В данном случае он возвращает его обратно тебе, поэтому синяя сфера зеркально повторяет твои движения с задержкой сети (пинг).
-            </div>
-            <div id="public-log" class="chat-box" style="height: 200px;"></div>
-        </div>
-
-        <!-- ТАБ 2: PRIVATE ROOM -->
-        <div id="tab-private" class="content" style="border-right-color: var(--neon-pink)">
-            <h2 style="color: var(--neon-pink)">P2P Private Room</h2>
-            <div class="info-panel" style="border-left-color: var(--neon-pink)">
-                <strong>Как реализовано:</strong><br>
-                Никаких серверов! Прямое соединение WebRTC Data Channel.
-                <br>1. Игрок А жмет "Создать", копирует токен и кидает Игроку Б.
-                <br>2. Игрок Б вставляет токен, жмет "Присоединиться", копирует новый токен ответа и кидает Игроку А.
-                <br>3. Игрок А вставляет ответ и жмет "Подтвердить". Магия! 🔮
-            </div>
-
-            <div>
-                <button class="pink-btn" onclick="createOffer()">1. Создать комнату</button>
-                <textarea id="my-token" rows="3" placeholder="Тут появится твой токен... скопируй его другу" readonly></textarea>
-            </div>
-            
-            <div style="margin-top: 15px;">
-                <textarea id="friend-token" rows="3" placeholder="Вставь сюда токен от друга..."></textarea>
-                <button class="pink-btn" onclick="joinRoom()">2. Присоединиться (Ответить)</button>
-                <button class="pink-btn" onclick="confirmJoin()" style="background: #fff; color: #000">3. Подтвердить ответ</button>
-            </div>
-
-            <h3 style="color: var(--neon-pink); margin-top: 20px;">P2P Chat</h3>
-            <div id="private-chat" class="chat-box"></div>
-            <div style="display: flex; margin-top: 5px;">
-                <input type="text" id="chat-msg" placeholder="Сообщение..." onkeypress="if(event.key === 'Enter') sendP2PMessage()">
-                <button class="pink-btn" onclick="sendP2PMessage()">Отправить</button>
-            </div>
-        </div>
+  <div id="keys">
+    <div class="kr"><div class="k" id="k-w">W</div></div>
+    <div class="kr">
+      <div class="k" id="k-a">A</div>
+      <div class="k" id="k-s">S</div>
+      <div class="k" id="k-d">D</div>
     </div>
+    <div class="kr"><div class="k wide" id="k-space">SPACE</div></div>
+  </div>
 
-    <div class="controls">
-        Управление аватаром:<br>
-        <strong>W A S D</strong> - ходить
-    </div>
+  <div id="statusbar">click scene · drag mouse = camera</div>
+</div>
 
-    <script>
-        // ==========================================
-        // 1. НАСТРОЙКА THREE.JS (НЕОНОВАЯ КОМНАТА)
-        // ==========================================
-        const scene = new THREE.Scene();
-        // Добавляем легкий туман для глубины
-        scene.fog = new THREE.FogExp2(0x050510, 0.03);
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+const HOST_ID    = 'spacewalk-pub-world-v3';
+const ACCENT_COLS= [0x38bdf8,0xfb923c,0x34d399,0xf472b6,0xfbbf24,0x60a5fa,0xc084fc,0xff6b6b];
+const GROUND_Y   = 0.58;
+const GRAVITY    = -20;
+const JUMP_V     = 7.5;
+const MOVE_SPD   = 4.5;
+const BROADCAST_HZ = 20;
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
+// ─── Renderer ─────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 
-        // Неоновый пол (Сетка)
-        const gridHelper = new THREE.GridHelper(40, 40, 0x00ffff, 0xff00ff);
-        gridHelper.position.y = -0.5;
-        scene.add(gridHelper);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.035);
 
-        // Мой Аватар (Неоновый розовый куб)
-        const myGeo = new THREE.BoxGeometry(1, 1, 1);
-        const myMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xaa00aa, roughness: 0.1 });
-        const myAvatar = new THREE.Mesh(myGeo, myMat);
-        scene.add(myAvatar);
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 80);
+camera.position.set(0, 5, 9);
+camera.lookAt(0, 0, 0);
 
-        // Аватар друга (Неоновая голубая сфера)
-        const otherGeo = new THREE.SphereGeometry(0.6, 32, 32);
-        const otherMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00aaaa, roughness: 0.1 });
-        const otherAvatar = new THREE.Mesh(otherGeo, otherMat);
-        otherAvatar.position.set(2, 0, 2);
-        scene.add(otherAvatar);
+// ─── Lights ───────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x111122, 6));
+const charLight = new THREE.PointLight(0xb07af8, 5, 9);
+scene.add(charLight);
+const rimLight = new THREE.PointLight(0x38bdf8, 1.5, 18);
+rimLight.position.set(-5, 4, -5);
+scene.add(rimLight);
 
-        // Освещение
-        const light = new THREE.AmbientLight(0x222222);
-        scene.add(light);
-        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-        pointLight.position.set(5, 5, 5);
-        scene.add(pointLight);
+// ─── Floor ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.GridHelper(40, 40, 0x2e1065, 0x160830));
 
-        camera.position.set(0, 5, 10);
-        camera.lookAt(0, 0, 0);
+// ─── Astronaut factory ────────────────────────────────────────────────────────
+function buildAstronaut(accentHex) {
+  const root  = new THREE.Group();
+  const suit  = new THREE.MeshStandardMaterial({ color:0x7c3aed, emissive:0x3b1070, emissiveIntensity:0.4, roughness:0.35, metalness:0.75 });
+  const white = new THREE.MeshStandardMaterial({ color:0xe0d9ff, emissive:0x6d28d9, emissiveIntensity:0.12, roughness:0.5, metalness:0.4 });
+  const visorM= new THREE.MeshStandardMaterial({ color:accentHex, emissive:accentHex, emissiveIntensity:1.8, roughness:0.05, metalness:1.0 });
+  const accM  = new THREE.MeshStandardMaterial({ color:accentHex, emissive:accentHex, emissiveIntensity:0.7, roughness:0.2, metalness:0.9 });
 
-        // Управление WASD
-        const keys = { w: false, a: false, s: false, d: false };
-        window.addEventListener('keydown', (e) => { 
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) keys[key] = true; 
-        });
-        window.addEventListener('keyup', (e) => { 
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) keys[key] = false; 
-        });
+  root.add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.56,0.28), suit));
+  const pack=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.38,0.14),white); pack.position.set(0,0.04,-0.19); root.add(pack);
+  const panel=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.2,0.05),accM); panel.position.set(0,0.08,0.165); root.add(panel);
 
-        // ==========================================
-        // 2. ЛОГИКА ВКЛАДОК И СИНХРОНИЗАЦИИ
-        // ==========================================
-        let currentMode = 'public'; // 'public' или 'private'
+  const headG=new THREE.Group(); headG.position.y=0.5;
+  headG.add(new THREE.Mesh(new THREE.BoxGeometry(0.42,0.42,0.42),white));
+  const visor=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.18,0.06),visorM); visor.position.set(0,0.02,0.22); headG.add(visor);
+  root.add(headG);
 
-        function switchTab(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-            
-            if (mode === 'public') {
-                document.querySelector('.tab-btn[onclick="switchTab(\'public\')"]').classList.add('active');
-                document.getElementById('tab-public').classList.add('active');
-                otherAvatar.material.color.setHex(0x00ffff); // Голубой для паблика
-                otherAvatar.material.emissive.setHex(0x00aaaa);
-            } else {
-                document.querySelector('.tab-btn.pink').classList.add('active');
-                document.getElementById('tab-private').classList.add('active');
-                otherAvatar.material.color.setHex(0xffaa00); // Оранжевый для привата
-                otherAvatar.material.emissive.setHex(0xaa5500);
-            }
+  function makeArm(side){
+    const pivot=new THREE.Group(); pivot.position.set(side*0.38,0.2,0);
+    const up=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.3,0.16),suit); up.position.y=-0.15; pivot.add(up);
+    pivot.add(new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),accM));
+    const elbow=new THREE.Group(); elbow.position.y=-0.3;
+    const lo=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.28,0.14),suit); lo.position.y=-0.14; elbow.add(lo);
+    const gl=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,0.16),accM); gl.position.y=-0.31; elbow.add(gl);
+    pivot.add(elbow);
+    return {pivot,elbow};
+  }
+  function makeLeg(side){
+    const pivot=new THREE.Group(); pivot.position.set(side*0.15,-0.27,0);
+    const th=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.34,0.2),suit); th.position.y=-0.17; pivot.add(th);
+    const knee=new THREE.Group(); knee.position.y=-0.34;
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.32,0.18),suit); sh.position.y=-0.16; knee.add(sh);
+    const bo=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.3),white); bo.position.set(0,-0.36,0.05); knee.add(bo);
+    pivot.add(knee);
+    return {pivot,knee};
+  }
+  const lArm=makeArm(-1), rArm=makeArm(1);
+  const lLeg=makeLeg(-1), rLeg=makeLeg(1);
+  root.add(lArm.pivot,rArm.pivot,lLeg.pivot,rLeg.pivot);
+  return {root,headG,lArm,rArm,lLeg,rLeg};
+}
+
+function applyAnim(ch, wc, moving, jumping){
+  const sw=moving?0.62:0.04;
+  ch.lArm.pivot.rotation.x= Math.sin(wc)*sw;
+  ch.rArm.pivot.rotation.x=-Math.sin(wc)*sw;
+  ch.lLeg.pivot.rotation.x=-Math.sin(wc)*sw;
+  ch.rLeg.pivot.rotation.x= Math.sin(wc)*sw;
+  ch.lArm.elbow.rotation.x=Math.max(0, Math.sin(wc)*0.5);
+  ch.rArm.elbow.rotation.x=Math.max(0,-Math.sin(wc)*0.5);
+  ch.lLeg.knee.rotation.x =Math.max(0,-Math.sin(wc)*0.45);
+  ch.rLeg.knee.rotation.x =Math.max(0, Math.sin(wc)*0.45);
+  if(jumping){ ch.lArm.pivot.rotation.x=-0.85; ch.rArm.pivot.rotation.x=-0.85; }
+  ch.headG.rotation.z=moving?Math.sin(wc*0.5)*0.04:0;
+}
+
+// ─── Local char ───────────────────────────────────────────────────────────────
+const localChar = buildAstronaut(0xa78bfa);
+scene.add(localChar.root);
+
+const charPos = new THREE.Vector3(0, GROUND_Y, 0);
+let velY=0, onGround=true, walkCycle=0, facingAngle=0, isMoving=false;
+
+// ─── Remote players ───────────────────────────────────────────────────────────
+// players[id] = { char, state, nametag, accent }
+const players = {};
+let accentIdx = 0;
+
+function addPlayer(id) {
+  if (players[id]) return;
+  const accent = ACCENT_COLS[accentIdx++ % ACCENT_COLS.length];
+  const ch = buildAstronaut(accent);
+  // Spawn at random spot
+  ch.root.position.set((Math.random()-0.5)*6, GROUND_Y, (Math.random()-0.5)*6);
+  scene.add(ch.root);
+
+  const tag = document.createElement('div');
+  tag.className = 'nametag';
+  tag.textContent = id.slice(-5);
+  tag.style.borderColor = '#'+accent.toString(16).padStart(6,'0');
+  document.getElementById('hud').appendChild(tag);
+
+  players[id] = { char:ch, state:{x:0,y:GROUND_Y,z:0,ry:0,wc:0,moving:false,jumping:false}, nametag:tag, accent };
+  refreshCount();
+}
+
+function removePlayer(id) {
+  if (!players[id]) return;
+  scene.remove(players[id].char.root);
+  players[id].nametag.remove();
+  delete players[id];
+  refreshCount();
+}
+
+function refreshCount() {
+  const n = Object.keys(players).length;
+  document.getElementById('playercount').textContent = n ? `· ${n+1} online` : '';
+}
+
+// ─── Nametag projection ───────────────────────────────────────────────────────
+const _pv = new THREE.Vector3();
+function worldToScreen(wp) {
+  _pv.copy(wp).project(camera);
+  return {
+    x:(_pv.x*0.5+0.5)*window.innerWidth,
+    y:(1-(_pv.y*0.5+0.5))*window.innerHeight,
+    behind:_pv.z>1
+  };
+}
+
+// ─── Network (hub/spoke via PeerJS) ───────────────────────────────────────────
+let myPeer=null, myId=null, isHost=false;
+// host only: conn per client
+const clientConns = {};  // id -> DataConnection
+// client only: connection to host
+let hostConn = null;
+
+function setStatus(label, isH) {
+  document.getElementById('netlabel').textContent = label;
+  document.getElementById('netdot').className = 'netdot' + (isH ? ' host' : '');
+}
+
+// Host: broadcast world snapshot to all clients
+function hostBroadcast(excludeId) {
+  const snapshot = {};
+  // include all players' states
+  for (const id in players) snapshot[id] = players[id].state;
+  // include our own state
+  snapshot[myId] = getMyState();
+  const msg = { type:'world', snapshot };
+  for (const id in clientConns) {
+    if (id === excludeId) continue;
+    try { if (clientConns[id].open) clientConns[id].send(msg); } catch(_){}
+  }
+}
+
+function getMyState() {
+  return { x:charPos.x, y:charPos.y, z:charPos.z, ry:facingAngle, wc:walkCycle, moving:isMoving, jumping:!onGround };
+}
+
+function setupClientConn(conn) {
+  conn.on('open', () => {
+    addPlayer(conn.peer);
+    clientConns[conn.peer] = conn;
+    setStatus(`host · ${Object.keys(clientConns).length} clients`, true);
+    refreshCount();
+  });
+  conn.on('data', data => {
+    // client sent their state → update + relay world to everyone
+    if (data.type === 'state' && players[conn.peer]) {
+      players[conn.peer].state = data.state;
+      hostBroadcast(conn.peer);
+    }
+  });
+  conn.on('close',  () => { removePlayer(conn.peer); delete clientConns[conn.peer]; setStatus(`host · ${Object.keys(clientConns).length} clients`, true); });
+  conn.on('error',  () => { removePlayer(conn.peer); delete clientConns[conn.peer]; });
+}
+
+function tryBecomeHost() {
+  myPeer = new Peer(HOST_ID, { debug:0 });
+  myPeer.on('open', id => {
+    myId = id; isHost = true;
+    setStatus('host · 0 clients', true);
+    startGame();
+  });
+  myPeer.on('connection', conn => setupClientConn(conn));
+  myPeer.on('error', err => {
+    if (err.type === 'unavailable-id') {
+      // host already exists → join as client
+      myPeer.destroy();
+      joinAsClient();
+    } else {
+      splashStatus('error: ' + err.type + ' — refresh');
+    }
+  });
+}
+
+function joinAsClient() {
+  myPeer = new Peer({ debug:0 });
+  myPeer.on('open', id => {
+    myId = id;
+    hostConn = myPeer.connect(HOST_ID, { reliable:false, serialization:'json' });
+    hostConn.on('open', () => {
+      setStatus('connected', false);
+      startGame();
+    });
+    hostConn.on('data', data => {
+      if (data.type === 'world') {
+        // full world snapshot from host
+        for (const id in data.snapshot) {
+          if (id === myId) continue;
+          if (!players[id]) addPlayer(id);
+          players[id].state = data.snapshot[id];
         }
-
-        // ==========================================
-        // 3. PUBLIC ROOM (WebSocket Echo Server)
-        // ==========================================
-        // Используем публичный echo-сервер для демонстрации задержки сети и пакетов
-        const ws = new WebSocket('wss://ws.postman-echo.com/raw');
-        const pubLog = document.getElementById('public-log');
-        let lastWsSend = 0;
-
-        ws.onopen = () => pubLog.innerHTML += '<div>[SYSTEM] Подключено к облачному серверу ☁️</div>';
-        
-        ws.onmessage = (event) => {
-            if (currentMode !== 'public') return;
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'move') {
-                    // Сервер вернул нам наши же координаты (эхо), двигаем чужой аватар туда
-                    // В реальном приложении сервер бы рассылал чужие координаты
-                    otherAvatar.position.x = data.x + 2; // +2 чтобы не сливались
-                    otherAvatar.position.z = data.z + 2;
-                }
-            } catch (e) {}
-        };
-
-        function sendPublicMove(x, z) {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'move', x, z }));
-            }
+        // remove players no longer in snapshot
+        for (const id in players) {
+          if (!data.snapshot[id]) removePlayer(id);
         }
+      }
+    });
+    hostConn.on('close', () => { setStatus('disconnected', false); });
+    hostConn.on('error', () => { setStatus('connection error', false); });
+  });
+  myPeer.on('error', err => splashStatus('peer error: ' + err.type));
+}
 
-        // ==========================================
-        // 4. PRIVATE ROOM (WebRTC P2P)
-        // ==========================================
-        const peer = new RTCPeerConnection({ iceServers:[{ urls: 'stun:stun.l.google.com:19302' }] });
-        let dataChannel;
+// ─── Broadcast loop ───────────────────────────────────────────────────────────
+setInterval(() => {
+  if (!myId) return;
+  if (isHost) {
+    hostBroadcast(null); // send world to all clients
+  } else if (hostConn && hostConn.open) {
+    try { hostConn.send({ type:'state', state:getMyState() }); } catch(_){}
+  }
+}, 1000 / BROADCAST_HZ);
 
-        // Когда мы собрали все данные для соединения (ICE кандидаты), выдаем их пользователю
-        peer.onicegatheringstatechange = () => {
-            if (peer.iceGatheringState === 'complete') {
-                const token = btoa(JSON.stringify(peer.localDescription));
-                document.getElementById('my-token').value = token;
-                logP2P("[SYSTEM] Токен сгенерирован! Скопируй его.");
-            }
-        };
+// ─── Input ────────────────────────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code]=true; hlKey(e.code,true);
+  if(e.code==='Space') e.preventDefault();
+});
+window.addEventListener('keyup',   e => { keys[e.code]=false; hlKey(e.code,false); });
+function hlKey(code,on){
+  const m={KeyW:'k-w',KeyA:'k-a',KeyS:'k-s',KeyD:'k-d',Space:'k-space'};
+  const el=document.getElementById(m[code]); if(el) el.classList.toggle('active',on);
+}
 
-        // Обработка входящего P2P соединения (для Игрока Б)
-        peer.ondatachannel = (event) => {
-            dataChannel = event.channel;
-            setupDataChannel();
-        };
+// ─── Mouse look ───────────────────────────────────────────────────────────────
+let camYaw=0, camPitch=0.3;
+canvas.addEventListener('click',()=>{ if(!document.activeElement?.matches('input')) canvas.requestPointerLock(); });
+window.addEventListener('mousemove',e=>{
+  if(!document.pointerLockElement) return;
+  camYaw  -=e.movementX*0.002;
+  camPitch-=e.movementY*0.002;
+  camPitch =Math.max(-0.05,Math.min(0.9,camPitch));
+});
+document.addEventListener('pointerlockchange',()=>{
+  document.getElementById('statusbar').textContent = document.pointerLockElement
+    ? 'ESC to release · WASD = move · SPACE = jump'
+    : 'click scene · drag mouse = camera · WASD = move · SPACE = jump';
+});
 
-        function setupDataChannel() {
-            dataChannel.onopen = () => logP2P("🟢 P2P СОЕДИНЕНИЕ УСТАНОВЛЕНО! Серверы больше не нужны.");
-            dataChannel.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'chat') {
-                    logP2P(`[Друг]: ${data.text}`, '#ffaa00');
-                } else if (data.type === 'move' && currentMode === 'private') {
-                    otherAvatar.position.x = data.x;
-                    otherAvatar.position.z = data.z;
-                }
-            };
-        }
+// ─── Clock ────────────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+const camTarget = new THREE.Vector3(0,0.8,0);
+let gameStarted = false;
 
-        // ШАГ 1: Игрок А создает предложение (Offer)
-        async function createOffer() {
-            dataChannel = peer.createDataChannel('neon-channel');
-            setupDataChannel();
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
-            logP2P("[SYSTEM] Создаем комнату... генерируем ключи...");
-        }
+function startGame() {
+  document.getElementById('splash').style.display='none';
+  document.getElementById('hud').style.display='';
+  if (!gameStarted) { gameStarted=true; animate(); }
+}
 
-        // ШАГ 2: Игрок Б вставляет токен Игрока А и создает Ответ (Answer)
-        async function joinRoom() {
-            const friendToken = document.getElementById('friend-token').value;
-            if(!friendToken) return alert("Вставь токен друга!");
-            const offer = JSON.parse(atob(friendToken));
-            await peer.setRemoteDescription(offer);
-            const answer = await peer.createAnswer();
-            await peer.setLocalDescription(answer);
-            logP2P("[SYSTEM] Подключаемся... генерируем ответный ключ...");
-        }
+// ─── Splash helpers ───────────────────────────────────────────────────────────
+function splashStatus(msg) {
+  document.getElementById('splash-status').textContent=msg;
+  document.getElementById('join-btn').disabled=false;
+}
 
-        // ШАГ 3: Игрок А вставляет токен-ответ от Игрока Б
-        async function confirmJoin() {
-            const friendToken = document.getElementById('friend-token').value;
-            if(!friendToken) return alert("Вставь токен-ответ друга!");
-            const answer = JSON.parse(atob(friendToken));
-            await peer.setRemoteDescription(answer);
-            logP2P("[SYSTEM] Ключи приняты. Устанавливаем P2P туннель...");
-        }
+document.getElementById('join-btn').addEventListener('click',()=>{
+  document.getElementById('join-btn').disabled=true;
+  document.getElementById('splash-status').textContent='connecting…';
+  tryBecomeHost();
+});
 
-        // Отправка чата по P2P
-        function sendP2PMessage() {
-            const input = document.getElementById('chat-msg');
-            const text = input.value;
-            if (text && dataChannel && dataChannel.readyState === 'open') {
-                dataChannel.send(JSON.stringify({ type: 'chat', text }));
-                logP2P(`[Я]: ${text}`, '#ff00ff');
-                input.value = '';
-            }
-        }
+// ─── Main loop ────────────────────────────────────────────────────────────────
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
 
-        function logP2P(msg, color = "#fff") {
-            const chat = document.getElementById('private-chat');
-            chat.innerHTML += `<div style="color:${color}; margin-bottom:5px;">${msg}</div>`;
-            chat.scrollTop = chat.scrollHeight;
-        }
+  // Local movement
+  const iFwd=keys['KeyW']?1:keys['KeyS']?-1:0;
+  const iRgt=keys['KeyD']?1:keys['KeyA']?-1:0;
+  isMoving=iFwd!==0||iRgt!==0;
 
-        function sendPrivateMove(x, z) {
-            if (dataChannel && dataChannel.readyState === 'open') {
-                dataChannel.send(JSON.stringify({ type: 'move', x, z }));
-            }
-        }
+  const mdx=Math.sin(camYaw)*iFwd - Math.cos(camYaw)*iRgt;
+  const mdz=Math.cos(camYaw)*iFwd + Math.sin(camYaw)*iRgt;
+  const mlen=Math.sqrt(mdx*mdx+mdz*mdz);
+  const nx=mlen>0.01?mdx/mlen:0, nz=mlen>0.01?mdz/mlen:0;
 
-        // ==========================================
-        // 5. ИГРОВОЙ ЦИКЛ (ANIMATION LOOP)
-        // ==========================================
-        const speed = 0.1;
-        function animate() {
-            requestAnimationFrame(animate);
+  charPos.x+=nx*MOVE_SPD*dt;
+  charPos.z+=nz*MOVE_SPD*dt;
 
-            let moved = false;
-            if (keys.w) { myAvatar.position.z -= speed; moved = true; }
-            if (keys.s) { myAvatar.position.z += speed; moved = true; }
-            if (keys.a) { myAvatar.position.x -= speed; moved = true; }
-            if (keys.d) { myAvatar.position.x += speed; moved = true; }
+  // Arena clamp
+  const fd=Math.sqrt(charPos.x*charPos.x+charPos.z*charPos.z);
+  if(fd>15){charPos.x*=15/fd;charPos.z*=15/fd;}
 
-            // Если аватар двинулся, отправляем координаты
-            if (moved) {
-                const now = Date.now();
-                if (now - lastWsSend > 50) { // Ограничиваем до 20 пакетов в сек
-                    if (currentMode === 'public') {
-                        sendPublicMove(myAvatar.position.x, myAvatar.position.z);
-                    } else if (currentMode === 'private') {
-                        sendPrivateMove(myAvatar.position.x, myAvatar.position.z);
-                    }
-                    lastWsSend = now;
-                }
-            }
+  // Jump
+  if(keys['Space']&&onGround){velY=JUMP_V;onGround=false;keys['Space']=false;}
+  velY+=GRAVITY*dt;
+  charPos.y+=velY*dt;
+  if(charPos.y<=GROUND_Y){charPos.y=GROUND_Y;velY=0;onGround=true;}
 
-            // Камера плавно следует за аватаром
-            camera.position.x += (myAvatar.position.x - camera.position.x) * 0.1;
-            camera.position.z += (myAvatar.position.z + 10 - camera.position.z) * 0.1;
+  // Facing
+  if(isMoving){
+    const ta=Math.atan2(nx,nz);
+    let d=ta-facingAngle;
+    while(d> Math.PI)d-=Math.PI*2;
+    while(d<-Math.PI)d+=Math.PI*2;
+    facingAngle+=d*Math.min(1,dt*12);
+  }
 
-            renderer.render(scene, camera);
-        }
-        
-        // Ресайз окна
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+  if(isMoving&&onGround) walkCycle+=dt*3.5;
+  else if(!onGround)     walkCycle+=dt*1.2;
 
-        animate();
-    </script>
+  const bob=(isMoving&&onGround)?Math.abs(Math.sin(walkCycle))*0.04:0;
+  localChar.root.position.set(charPos.x,charPos.y+bob,charPos.z);
+  localChar.root.rotation.y=facingAngle;
+  applyAnim(localChar,walkCycle,isMoving,!onGround);
+  charLight.position.set(charPos.x,charPos.y+1,charPos.z);
+
+  // Remote players
+  for(const id in players){
+    const p=players[id], s=p.state;
+    p.char.root.position.x+=(s.x-p.char.root.position.x)*0.2;
+    p.char.root.position.y+=(s.y-p.char.root.position.y)*0.2;
+    p.char.root.position.z+=(s.z-p.char.root.position.z)*0.2;
+    let da=s.ry-p.char.root.rotation.y;
+    while(da> Math.PI)da-=Math.PI*2;
+    while(da<-Math.PI)da+=Math.PI*2;
+    p.char.root.rotation.y+=da*0.2;
+    applyAnim(p.char,s.wc,s.moving,s.jumping);
+
+    // Nametag
+    const tp=new THREE.Vector3(p.char.root.position.x,p.char.root.position.y+1.4,p.char.root.position.z);
+    const sc=worldToScreen(tp);
+    if(sc.behind){p.nametag.style.display='none';}
+    else{p.nametag.style.display='';p.nametag.style.left=sc.x+'px';p.nametag.style.top=sc.y+'px';}
+  }
+
+  // Camera
+  const cox=Math.sin(camYaw)*4.5, coz=Math.cos(camYaw)*4.5;
+  const ix=charPos.x-cox, iy=charPos.y+1.8+Math.sin(camPitch)*4.5, iz=charPos.z-coz;
+  camera.position.x+=(ix-camera.position.x)*0.1;
+  camera.position.y+=(iy-camera.position.y)*0.1;
+  camera.position.z+=(iz-camera.position.z)*0.1;
+  camTarget.x+=(charPos.x    -camTarget.x)*0.15;
+  camTarget.y+=(charPos.y+0.8-camTarget.y)*0.15;
+  camTarget.z+=(charPos.z    -camTarget.z)*0.15;
+  camera.lookAt(camTarget);
+
+  renderer.render(scene,camera);
+}
+
+window.addEventListener('resize',()=>{
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+</script>
 </body>
 </html>

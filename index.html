@@ -3,94 +3,195 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Space Walk — Public World</title>
+<title>Space Walk — Zombie Survival</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;overflow:hidden;font-family:'Space Mono',monospace}
-canvas{width:100vw;height:100vh;display:block}
+body{background:#000;overflow:hidden;font-family:'Space Mono',monospace;user-select:none}
+canvas{width:100vw;height:100vh;display:block;cursor:crosshair}
+canvas.rotating{cursor:grabbing}
 
-/* ── Splash ── */
 #splash{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  background:rgba(0,0,0,0.88);z-index:100;flex-direction:column;gap:18px;
+  background:rgba(0,0,0,0.92);z-index:100;flex-direction:column;gap:16px;
 }
-#splash h1{font-size:22px;color:#fff;letter-spacing:0.12em;font-weight:700}
-#splash p{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-align:center;line-height:1.8}
+#splash h1{font-size:24px;color:#fff;letter-spacing:0.14em;font-weight:700}
+#splash p{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.07em;text-align:center;line-height:2}
 #join-btn{
-  margin-top:6px;padding:12px 36px;border-radius:8px;cursor:pointer;font-size:13px;
+  padding:11px 34px;border-radius:8px;cursor:pointer;font-size:12px;
   background:rgba(167,139,250,0.18);border:1px solid rgba(167,139,250,0.5);
   color:rgba(167,139,250,1);font-family:'Space Mono',monospace;letter-spacing:0.08em;
-  transition:background 0.15s,transform 0.1s;
+  transition:background .15s,transform .1s;
 }
-#join-btn:hover{background:rgba(167,139,250,0.32);transform:translateY(-1px)}
-#join-btn:active{transform:translateY(0)}
-#join-btn:disabled{opacity:0.4;cursor:default;transform:none}
-#splash-status{font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.06em;min-height:16px}
+#join-btn:hover{background:rgba(167,139,250,.32);transform:translateY(-1px)}
+#join-btn:disabled{opacity:.4;cursor:default;transform:none}
+#splash-status{font-size:10px;color:rgba(255,255,255,.28);min-height:16px}
 
-/* ── HUD ── */
 #hud{position:absolute;inset:0;pointer-events:none}
 
-/* Status pill */
 #netpill{
   position:absolute;top:14px;left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:8px;
-  background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.1);
+  background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);
   border-radius:20px;padding:5px 14px;
 }
 #netdot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0}
 #netdot.host{background:#c084fc}
-#netlabel{font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:0.06em}
-#playercount{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.04em}
+#netlabel{font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.06em}
+#playercount{font-size:10px;color:rgba(255,255,255,.3)}
 
-/* Keys */
-#keys{
+#coinbox{
   position:absolute;top:14px;left:16px;
-  display:flex;flex-direction:column;align-items:center;gap:3px;
+  display:flex;align-items:center;gap:7px;
+  background:rgba(0,0,0,.55);border:1px solid rgba(250,200,60,.25);
+  border-radius:16px;padding:5px 13px;
 }
+#coin-icon{width:12px;height:12px;border-radius:50%;background:#facc15;flex-shrink:0}
+#coin-count{font-size:12px;color:#facc15;letter-spacing:.06em}
+#killbox{position:absolute;top:48px;left:16px;font-size:10px;color:rgba(255,255,255,.28);letter-spacing:.06em}
+
+#hpbar-wrap{
+  position:absolute;bottom:44px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;
+}
+#hpbar-bg{width:140px;height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
+#hpbar-fill{height:100%;width:100%;background:#4ade80;border-radius:3px;transition:width .2s,background .3s}
+#hplabel{font-size:10px;color:rgba(255,255,255,.45);min-width:42px}
+
+#shop-btn{
+  position:absolute;bottom:44px;right:16px;pointer-events:all;
+  padding:8px 18px;border-radius:8px;cursor:pointer;font-size:11px;
+  background:rgba(250,200,60,.15);border:1px solid rgba(250,200,60,.4);
+  color:#facc15;font-family:'Space Mono',monospace;letter-spacing:.08em;
+  transition:background .15s;
+}
+#shop-btn:hover{background:rgba(250,200,60,.28)}
+
+#keys{position:absolute;top:14px;right:16px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .kr{display:flex;gap:3px}
 .k{
-  width:28px;height:28px;border-radius:5px;
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);
+  width:27px;height:27px;border-radius:5px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
   display:flex;align-items:center;justify-content:center;
-  font-size:10px;color:rgba(255,255,255,0.45);transition:all 0.07s;
+  font-size:10px;color:rgba(255,255,255,.4);transition:all .07s;
 }
-.k.wide{width:72px}
-.k.active{background:rgba(167,139,250,0.3);border-color:rgba(167,139,250,0.65);color:#fff}
+.k.wide{width:70px}
+.k.active{background:rgba(167,139,250,.28);border-color:rgba(167,139,250,.6);color:#fff}
 
+#cam-hint{
+  position:absolute;bottom:20px;right:16px;
+  font-size:9px;color:rgba(255,255,255,.18);letter-spacing:.04em;line-height:1.7;text-align:right;
+}
 #statusbar{
-  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-  font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:0.05em;white-space:nowrap;
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:rgba(255,255,255,.18);letter-spacing:.04em;white-space:nowrap;
 }
 
-/* Nametags */
 .nametag{
   position:absolute;transform:translate(-50%,-100%);pointer-events:none;
-  background:rgba(0,0,0,0.65);border:1px solid rgba(255,255,255,0.1);
+  background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.1);
   border-radius:4px;padding:2px 7px;
-  font-size:9px;color:rgba(255,255,255,0.7);white-space:nowrap;
+  font-size:9px;color:rgba(255,255,255,.7);white-space:nowrap;
 }
+.hp-tag{
+  position:absolute;transform:translate(-50%,-100%);pointer-events:none;
+  font-size:9px;color:rgba(255,255,255,.5);white-space:nowrap;
+}
+
+.coin-popup{
+  position:absolute;transform:translate(-50%,-50%);pointer-events:none;
+  font-size:12px;color:#facc15;font-weight:700;letter-spacing:.05em;
+  animation:popUp 1.2s ease-out forwards;
+}
+@keyframes popUp{
+  0%{opacity:1;transform:translate(-50%,-50%)}
+  100%{opacity:0;transform:translate(-50%,-140%)}
+}
+
+.dmg-popup{
+  position:absolute;transform:translate(-50%,-50%);pointer-events:none;
+  font-size:13px;color:#f87171;font-weight:700;
+  animation:popUp 0.9s ease-out forwards;
+}
+
+#dmg-flash{
+  position:absolute;inset:0;pointer-events:none;
+  background:rgba(220,30,30,0);transition:background .08s;
+}
+#dmg-flash.hit{background:rgba(220,30,30,.28)}
+
+/* Death screen */
+#death-screen{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.75);z-index:60;flex-direction:column;gap:14px;
+  pointer-events:none;
+}
+#death-screen.active{display:flex}
+#death-title{font-size:32px;color:#f87171;letter-spacing:.18em;font-weight:700}
+#death-sub{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:.08em}
+#respawn-timer{font-size:20px;color:#fff;font-weight:700}
+#death-killedby{font-size:11px;color:rgba(248,113,113,.7);letter-spacing:.06em}
+
+/* Shop */
+#shop{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.82);z-index:50;pointer-events:all;
+}
+#shop.open{display:flex}
+#shop-inner{
+  width:min(480px,90vw);background:rgba(10,5,20,.97);
+  border:1px solid rgba(250,200,60,.2);border-radius:14px;padding:22px 24px;
+}
+#shop-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,200,60,.6);margin-bottom:4px}
+#shop-coins-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+#shop-balance{font-size:20px;color:#facc15;font-weight:700}
+#shop-close{
+  padding:5px 14px;border-radius:6px;cursor:pointer;font-size:10px;
+  background:transparent;border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.45);font-family:'Space Mono',monospace;
+}
+#shop-close:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.7)}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shop-item{
+  border:1px solid rgba(255,255,255,.08);border-radius:10px;
+  padding:14px 14px 12px;cursor:pointer;
+  transition:border-color .12s,background .12s;background:rgba(255,255,255,.03);
+}
+.shop-item:hover{border-color:rgba(250,200,60,.35);background:rgba(250,200,60,.05)}
+.shop-item.cant-afford{opacity:.38;cursor:not-allowed}
+.shop-item.cant-afford:hover{border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.item-icon{font-size:22px;margin-bottom:6px}
+.item-name{font-size:11px;color:#fff;font-weight:700;margin-bottom:3px;letter-spacing:.04em}
+.item-desc{font-size:9px;color:rgba(255,255,255,.35);line-height:1.5;margin-bottom:8px}
+.item-price{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#facc15;font-weight:700}
+.item-price-dot{width:8px;height:8px;border-radius:50%;background:#facc15;flex-shrink:0}
+.item-owned{font-size:9px;color:#4ade80;margin-top:4px}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<!-- Splash -->
 <div id="splash">
   <h1>SPACE WALK</h1>
-  <p>public world · everyone joins the same space<br>move with WASD · look with mouse · SPACE to jump</p>
+  <p>zombie survival · public world<br>
+  WASD = move · LMB = axe attack · B = shop<br>
+  RMB drag = rotate camera · scroll = zoom</p>
   <button id="join-btn">ENTER WORLD</button>
   <div id="splash-status">ready</div>
 </div>
 
-<!-- HUD -->
 <div id="hud" style="display:none">
   <div id="netpill">
     <div id="netdot"></div>
     <span id="netlabel">connecting…</span>
     <span id="playercount"></span>
   </div>
-
+  <div id="coinbox"><div id="coin-icon"></div><span id="coin-count">0</span></div>
+  <div id="killbox">kills: <span id="kill-count">0</span></div>
+  <div id="hpbar-wrap">
+    <div id="hpbar-bg"><div id="hpbar-fill"></div></div>
+    <div id="hplabel">100 HP</div>
+  </div>
   <div id="keys">
     <div class="kr"><div class="k" id="k-w">W</div></div>
     <div class="kr">
@@ -100,389 +201,747 @@ canvas{width:100vw;height:100vh;display:block}
     </div>
     <div class="kr"><div class="k wide" id="k-space">SPACE</div></div>
   </div>
+  <button id="shop-btn" onclick="toggleShop()">B  SHOP</button>
+  <div id="statusbar">WASD = move · LMB = attack · RMB drag = camera · scroll = zoom</div>
+  <div id="cam-hint">RMB drag = rotate<br>scroll = zoom</div>
+  <div id="dmg-flash"></div>
+</div>
 
-  <div id="statusbar">click scene · drag mouse = camera</div>
+<div id="death-screen">
+  <div id="death-title">YOU DIED</div>
+  <div id="death-killedby"></div>
+  <div id="death-sub">respawning in</div>
+  <div id="respawn-timer">5</div>
+</div>
+
+<div id="shop">
+  <div id="shop-inner">
+    <div id="shop-title">zombie survival shop</div>
+    <div id="shop-coins-row">
+      <div id="shop-balance">0 coins</div>
+      <button id="shop-close" onclick="toggleShop()">close</button>
+    </div>
+    <div class="shop-grid" id="shop-grid"></div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-// ─── Constants ────────────────────────────────────────────────────────────────
-const HOST_ID    = 'spacewalk-pub-world-v3';
-const ACCENT_COLS= [0x38bdf8,0xfb923c,0x34d399,0xf472b6,0xfbbf24,0x60a5fa,0xc084fc,0xff6b6b];
-const GROUND_Y   = 0.58;
-const GRAVITY    = -20;
-const JUMP_V     = 7.5;
-const MOVE_SPD   = 4.5;
-const BROADCAST_HZ = 20;
+const HOST_ID='spacewalk-v5';
+const ACCENT_COLS=[0x38bdf8,0xfb923c,0x34d399,0xf472b6,0xfbbf24,0x60a5fa,0xc084fc,0xff6b6b];
+const GROUND_Y=0.58, GRAVITY=-20, JUMP_V=7.5, BASE_SPEED=4.5;
+const BROADCAST_HZ=20, MAX_ZOMBIES=14, ZOMBIE_SPAWN_MS=3500;
+const COIN_R=1.2, MAP_SEED=42857;
 
-// ─── Renderer ─────────────────────────────────────────────────────────────────
-const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+// ── Player state ──────────────────────────────────────────────────────────────
+let coins=0,kills=0,playerHP=100,maxHP=100,playerSpd=BASE_SPEED,axeDmg=25;
+let hasShield=false,shieldTimer=0,lastDmgTime=0;
+let isDead=false,respawnT=0;
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x000000, 0.035);
+// ── Seeded RNG ────────────────────────────────────────────────────────────────
+function mulberry32(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 80);
-camera.position.set(0, 5, 9);
-camera.lookAt(0, 0, 0);
+// ── Renderer ──────────────────────────────────────────────────────────────────
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+renderer.shadowMap.enabled=true;
 
-// ─── Lights ───────────────────────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x111122, 6));
-const charLight = new THREE.PointLight(0xb07af8, 5, 9);
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x000005,0.028);
+
+const camera=new THREE.PerspectiveCamera(65,window.innerWidth/window.innerHeight,0.1,100);
+
+// ── Lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x111128,5));
+const charLight=new THREE.PointLight(0xb07af8,5,10);
 scene.add(charLight);
-const rimLight = new THREE.PointLight(0x38bdf8, 1.5, 18);
-rimLight.position.set(-5, 4, -5);
-scene.add(rimLight);
+const moonLight=new THREE.DirectionalLight(0x8888ff,0.8);
+moonLight.position.set(5,12,8);
+scene.add(moonLight);
 
-// ─── Floor ────────────────────────────────────────────────────────────────────
-scene.add(new THREE.GridHelper(40, 40, 0x2e1065, 0x160830));
+// ── Map generation ────────────────────────────────────────────────────────────
+const rng=mulberry32(MAP_SEED);
+const BIOME_COLORS=[
+  0x7c3aed,0x0f6e56,0x854f0b,0x3c3489,0x993556,0x185fa5
+];
+const platformMats=BIOME_COLORS.map(c=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0.12,roughness:0.7,metalness:0.3}));
 
-// ─── Astronaut factory ────────────────────────────────────────────────────────
-function buildAstronaut(accentHex) {
-  const root  = new THREE.Group();
-  const suit  = new THREE.MeshStandardMaterial({ color:0x7c3aed, emissive:0x3b1070, emissiveIntensity:0.4, roughness:0.35, metalness:0.75 });
-  const white = new THREE.MeshStandardMaterial({ color:0xe0d9ff, emissive:0x6d28d9, emissiveIntensity:0.12, roughness:0.5, metalness:0.4 });
-  const visorM= new THREE.MeshStandardMaterial({ color:accentHex, emissive:accentHex, emissiveIntensity:1.8, roughness:0.05, metalness:1.0 });
-  const accM  = new THREE.MeshStandardMaterial({ color:accentHex, emissive:accentHex, emissiveIntensity:0.7, roughness:0.2, metalness:0.9 });
+// Floor tiles — colored zones
+const TILE=4, GRID=10;
+for(let ix=-GRID;ix<=GRID;ix++){
+  for(let iz=-GRID;iz<=GRID;iz++){
+    const r=Math.sqrt(ix*ix+iz*iz);
+    if(r>GRID+0.5) continue;
+    const biome=Math.floor(rng()*6);
+    const geo=new THREE.BoxGeometry(TILE-0.06,0.12,TILE-0.06);
+    const mesh=new THREE.Mesh(geo,platformMats[biome]);
+    mesh.position.set(ix*TILE,-.05,iz*TILE);
+    scene.add(mesh);
+  }
+}
 
-  root.add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.56,0.28), suit));
+// Platforms (elevated colored boxes)
+for(let i=0;i<28;i++){
+  const px=(rng()-.5)*36, pz=(rng()-.5)*36;
+  const w=1.5+rng()*3, d=1.5+rng()*3, h=0.4+rng()*1.8;
+  const mat=platformMats[Math.floor(rng()*6)];
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(px,h/2,pz);
+  scene.add(m);
+}
+
+// Pillars
+for(let i=0;i<16;i++){
+  const px=(rng()-.5)*30, pz=(rng()-.5)*30;
+  const h=1.5+rng()*3;
+  const mat=platformMats[Math.floor(rng()*6)];
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.4,h,8),mat);
+  m.position.set(px,h/2,pz);
+  scene.add(m);
+}
+
+// ── Astronaut factory ─────────────────────────────────────────────────────────
+function buildAstronaut(accentHex){
+  const root=new THREE.Group();
+  const suit=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x3b1070,emissiveIntensity:0.4,roughness:0.35,metalness:0.75});
+  const white=new THREE.MeshStandardMaterial({color:0xe0d9ff,emissive:0x6d28d9,emissiveIntensity:0.12,roughness:0.5,metalness:0.4});
+  const visorM=new THREE.MeshStandardMaterial({color:accentHex,emissive:accentHex,emissiveIntensity:1.8,roughness:0.05,metalness:1.0});
+  const accM=new THREE.MeshStandardMaterial({color:accentHex,emissive:accentHex,emissiveIntensity:0.7,roughness:0.2,metalness:0.9});
+  root.add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.56,0.28),suit));
   const pack=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.38,0.14),white); pack.position.set(0,0.04,-0.19); root.add(pack);
   const panel=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.2,0.05),accM); panel.position.set(0,0.08,0.165); root.add(panel);
-
   const headG=new THREE.Group(); headG.position.y=0.5;
   headG.add(new THREE.Mesh(new THREE.BoxGeometry(0.42,0.42,0.42),white));
   const visor=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.18,0.06),visorM); visor.position.set(0,0.02,0.22); headG.add(visor);
   root.add(headG);
-
-  function makeArm(side){
-    const pivot=new THREE.Group(); pivot.position.set(side*0.38,0.2,0);
-    const up=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.3,0.16),suit); up.position.y=-0.15; pivot.add(up);
-    pivot.add(new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),accM));
-    const elbow=new THREE.Group(); elbow.position.y=-0.3;
-    const lo=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.28,0.14),suit); lo.position.y=-0.14; elbow.add(lo);
-    const gl=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,0.16),accM); gl.position.y=-0.31; elbow.add(gl);
-    pivot.add(elbow);
-    return {pivot,elbow};
+  function makeArm(s){
+    const piv=new THREE.Group(); piv.position.set(s*0.38,0.2,0);
+    const up=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.3,0.16),suit); up.position.y=-0.15; piv.add(up);
+    piv.add(new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),accM));
+    const el=new THREE.Group(); el.position.y=-0.3;
+    const lo=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.28,0.14),suit); lo.position.y=-0.14; el.add(lo);
+    const gl=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,0.16),accM); gl.position.y=-0.31; el.add(gl);
+    piv.add(el); return{pivot:piv,elbow:el};
   }
-  function makeLeg(side){
-    const pivot=new THREE.Group(); pivot.position.set(side*0.15,-0.27,0);
-    const th=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.34,0.2),suit); th.position.y=-0.17; pivot.add(th);
-    const knee=new THREE.Group(); knee.position.y=-0.34;
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.32,0.18),suit); sh.position.y=-0.16; knee.add(sh);
-    const bo=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.3),white); bo.position.set(0,-0.36,0.05); knee.add(bo);
-    pivot.add(knee);
-    return {pivot,knee};
+  function makeLeg(s){
+    const piv=new THREE.Group(); piv.position.set(s*0.15,-0.27,0);
+    const th=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.34,0.2),suit); th.position.y=-0.17; piv.add(th);
+    const kn=new THREE.Group(); kn.position.y=-0.34;
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.32,0.18),suit); sh.position.y=-0.16; kn.add(sh);
+    const bo=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.3),white); bo.position.set(0,-0.36,0.05); kn.add(bo);
+    piv.add(kn); return{pivot:piv,knee:kn};
   }
-  const lArm=makeArm(-1), rArm=makeArm(1);
-  const lLeg=makeLeg(-1), rLeg=makeLeg(1);
+  const lArm=makeArm(-1),rArm=makeArm(1),lLeg=makeLeg(-1),rLeg=makeLeg(1);
   root.add(lArm.pivot,rArm.pivot,lLeg.pivot,rLeg.pivot);
-  return {root,headG,lArm,rArm,lLeg,rLeg};
+  return{root,headG,lArm,rArm,lLeg,rLeg};
 }
 
-function applyAnim(ch, wc, moving, jumping){
+function applyAnim(ch,wc,moving,jumping){
   const sw=moving?0.62:0.04;
-  ch.lArm.pivot.rotation.x= Math.sin(wc)*sw;
+  ch.lArm.pivot.rotation.x=Math.sin(wc)*sw;
   ch.rArm.pivot.rotation.x=-Math.sin(wc)*sw;
   ch.lLeg.pivot.rotation.x=-Math.sin(wc)*sw;
-  ch.rLeg.pivot.rotation.x= Math.sin(wc)*sw;
-  ch.lArm.elbow.rotation.x=Math.max(0, Math.sin(wc)*0.5);
+  ch.rLeg.pivot.rotation.x=Math.sin(wc)*sw;
+  ch.lArm.elbow.rotation.x=Math.max(0,Math.sin(wc)*0.5);
   ch.rArm.elbow.rotation.x=Math.max(0,-Math.sin(wc)*0.5);
-  ch.lLeg.knee.rotation.x =Math.max(0,-Math.sin(wc)*0.45);
-  ch.rLeg.knee.rotation.x =Math.max(0, Math.sin(wc)*0.45);
-  if(jumping){ ch.lArm.pivot.rotation.x=-0.85; ch.rArm.pivot.rotation.x=-0.85; }
+  ch.lLeg.knee.rotation.x=Math.max(0,-Math.sin(wc)*0.45);
+  ch.rLeg.knee.rotation.x=Math.max(0,Math.sin(wc)*0.45);
+  if(jumping){ch.lArm.pivot.rotation.x=-0.85;ch.rArm.pivot.rotation.x=-0.85;}
   ch.headG.rotation.z=moving?Math.sin(wc*0.5)*0.04:0;
 }
 
-// ─── Local char ───────────────────────────────────────────────────────────────
-const localChar = buildAstronaut(0xa78bfa);
+// ── Local char ────────────────────────────────────────────────────────────────
+const localChar=buildAstronaut(0xa78bfa);
 scene.add(localChar.root);
+const charPos=new THREE.Vector3(0,GROUND_Y,0);
+let velY=0,onGround=true,walkCycle=0,facingAngle=0,isMoving=false;
 
-const charPos = new THREE.Vector3(0, GROUND_Y, 0);
-let velY=0, onGround=true, walkCycle=0, facingAngle=0, isMoving=false;
+// ── Zombies ───────────────────────────────────────────────────────────────────
+const zMat=new THREE.MeshStandardMaterial({color:0x16a34a,emissive:0x14532d,emissiveIntensity:0.5,roughness:0.6,metalness:0.1});
+const zEye=new THREE.MeshStandardMaterial({color:0xff2020,emissive:0xff0000,emissiveIntensity:2.5});
+const zombies=[];
 
-// ─── Remote players ───────────────────────────────────────────────────────────
-// players[id] = { char, state, nametag, accent }
-const players = {};
-let accentIdx = 0;
+function buildZombie(){
+  const root=new THREE.Group();
+  root.add(new THREE.Mesh(new THREE.BoxGeometry(0.46,0.50,0.24),zMat));
+  const headG=new THREE.Group(); headG.position.y=0.44;
+  headG.add(new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.36),zMat));
+  [-1,1].forEach(s=>{
+    const eye=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.07,0.05),zEye);
+    eye.position.set(s*0.1,0.04,0.19); headG.add(eye);
+  });
+  root.add(headG);
 
-function addPlayer(id) {
-  if (players[id]) return;
-  const accent = ACCENT_COLS[accentIdx++ % ACCENT_COLS.length];
-  const ch = buildAstronaut(accent);
-  // Spawn at random spot
-  ch.root.position.set((Math.random()-0.5)*6, GROUND_Y, (Math.random()-0.5)*6);
-  scene.add(ch.root);
-
-  const tag = document.createElement('div');
-  tag.className = 'nametag';
-  tag.textContent = id.slice(-5);
-  tag.style.borderColor = '#'+accent.toString(16).padStart(6,'0');
-  document.getElementById('hud').appendChild(tag);
-
-  players[id] = { char:ch, state:{x:0,y:GROUND_Y,z:0,ry:0,wc:0,moving:false,jumping:false}, nametag:tag, accent };
-  refreshCount();
+  function makeZArm(s){
+    const piv=new THREE.Group(); piv.position.set(s*0.35,0.18,0);
+    piv.rotation.x=-0.7; // arms outstretched zombie-style
+    const up=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.28,0.14),zMat); up.position.y=-0.14; piv.add(up);
+    const el=new THREE.Group(); el.position.y=-0.28;
+    const lo=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.24,0.12),zMat); lo.position.y=-0.12; el.add(lo);
+    piv.add(el);
+    return{pivot:piv,elbow:el};
+  }
+  function makeZLeg(s){
+    const piv=new THREE.Group(); piv.position.set(s*0.12,-0.25,0);
+    const th=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.32,0.18),zMat); th.position.y=-0.16; piv.add(th);
+    const kn=new THREE.Group(); kn.position.y=-0.32;
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.28,0.16),zMat); sh.position.y=-0.14; kn.add(sh);
+    piv.add(kn);
+    return{pivot:piv,knee:kn};
+  }
+  const lArm=makeZArm(-1),rArm=makeZArm(1),lLeg=makeZLeg(-1),rLeg=makeZLeg(1);
+  root.add(lArm.pivot,rArm.pivot,lLeg.pivot,rLeg.pivot);
+  return{root,headG,lArm,rArm,lLeg,rLeg};
 }
 
-function removePlayer(id) {
-  if (!players[id]) return;
-  scene.remove(players[id].char.root);
-  players[id].nametag.remove();
-  delete players[id];
-  refreshCount();
+function applyZombieAnim(z,wc,moving){
+  const sw=moving?0.55:0.02;
+  z.lLeg.pivot.rotation.x=-Math.sin(wc)*sw;
+  z.rLeg.pivot.rotation.x=Math.sin(wc)*sw;
+  z.lLeg.knee.rotation.x=Math.max(0,-Math.sin(wc)*0.3);
+  z.rLeg.knee.rotation.x=Math.max(0,Math.sin(wc)*0.3);
+  // arms sway side-to-side zombie style
+  z.lArm.pivot.rotation.z=-0.4+Math.sin(wc*0.5)*0.2;
+  z.rArm.pivot.rotation.z=0.4-Math.sin(wc*0.5)*0.2;
+  z.headG.rotation.z=Math.sin(wc*0.3)*0.08;
 }
 
-function refreshCount() {
-  const n = Object.keys(players).length;
-  document.getElementById('playercount').textContent = n ? `· ${n+1} online` : '';
+function spawnZombie(){
+  if(zombies.length>=MAX_ZOMBIES) return;
+  const angle=Math.random()*Math.PI*2, r=13+Math.random()*4;
+  const parts=buildZombie();
+  parts.root.position.set(Math.cos(angle)*r,GROUND_Y,Math.sin(angle)*r);
+  scene.add(parts.root);
+  zombies.push({...parts,hp:60,maxHp:60,lastAtk:0,walkT:0,dead:false,deathT:0,pieces:[]});
 }
 
-// ─── Nametag projection ───────────────────────────────────────────────────────
-const _pv = new THREE.Vector3();
-function worldToScreen(wp) {
-  _pv.copy(wp).project(camera);
-  return {
-    x:(_pv.x*0.5+0.5)*window.innerWidth,
-    y:(1-(_pv.y*0.5+0.5))*window.innerHeight,
-    behind:_pv.z>1
+// Dismemberment — detach limb as ragdoll piece
+function detachLimb(z,limb){
+  const worldPos=new THREE.Vector3();
+  limb.pivot.getWorldPosition(worldPos);
+  scene.remove(z.root);
+  const piece=limb.pivot.clone();
+  piece.position.copy(worldPos);
+  scene.add(piece);
+  const vel={
+    x:(Math.random()-.5)*6,
+    y:3+Math.random()*4,
+    z:(Math.random()-.5)*6,
+    rx:(Math.random()-.5)*8,
+    ry:(Math.random()-.5)*8,
   };
+  z.pieces.push({mesh:piece,vel,age:0});
+  scene.add(z.root);
 }
 
-// ─── Network (hub/spoke via PeerJS) ───────────────────────────────────────────
-let myPeer=null, myId=null, isHost=false;
-// host only: conn per client
-const clientConns = {};  // id -> DataConnection
-// client only: connection to host
-let hostConn = null;
-
-function setStatus(label, isH) {
-  document.getElementById('netlabel').textContent = label;
-  document.getElementById('netdot').className = 'netdot' + (isH ? ' host' : '');
+function killZombie(z,idx){
+  // detach all limbs
+  [z.lArm,z.rArm,z.lLeg,z.rLeg].forEach(l=>detachLimb(z,l));
+  scene.remove(z.root);
+  const reward=5+Math.floor(Math.random()*8);
+  spawnCoinsAt(z.root.position.x,z.root.position.z,reward);
+  zombies.splice(idx,1);
+  kills++;
+  document.getElementById('kill-count').textContent=kills;
 }
 
-// Host: broadcast world snapshot to all clients
-function hostBroadcast(excludeId) {
-  const snapshot = {};
-  // include all players' states
-  for (const id in players) snapshot[id] = players[id].state;
-  // include our own state
-  snapshot[myId] = getMyState();
-  const msg = { type:'world', snapshot };
-  for (const id in clientConns) {
-    if (id === excludeId) continue;
-    try { if (clientConns[id].open) clientConns[id].send(msg); } catch(_){}
+// ── Coins ─────────────────────────────────────────────────────────────────────
+const coinMat=new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xb45309,emissiveIntensity:0.6,roughness:0.2,metalness:1});
+const droppedCoins=[];
+
+function spawnCoinsAt(x,z,total){
+  const count=Math.max(1,Math.min(8,Math.floor(total/4)));
+  const perCoin=Math.ceil(total/count);
+  for(let i=0;i<count;i++){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.06,10),coinMat);
+    m.position.set(x+(Math.random()-.5)*1.6,0.22,z+(Math.random()-.5)*1.6);
+    m.rotation.x=Math.PI/2;
+    scene.add(m);
+    droppedCoins.push({mesh:m,value:perCoin,spawnT:Date.now()});
   }
 }
 
-function getMyState() {
-  return { x:charPos.x, y:charPos.y, z:charPos.z, ry:facingAngle, wc:walkCycle, moving:isMoving, jumping:!onGround };
+function showPopup(x,z,text,cls){
+  const v=new THREE.Vector3(x,0.9,z);
+  const s=worldToScreen(v); if(s.behind) return;
+  const el=document.createElement('div');
+  el.className=cls; el.textContent=text;
+  el.style.left=s.x+'px'; el.style.top=s.y+'px';
+  document.getElementById('hud').appendChild(el);
+  setTimeout(()=>el.remove(),1200);
 }
 
-function setupClientConn(conn) {
-  conn.on('open', () => {
-    addPlayer(conn.peer);
-    clientConns[conn.peer] = conn;
-    setStatus(`host · ${Object.keys(clientConns).length} clients`, true);
-    refreshCount();
+// ── Remote players ────────────────────────────────────────────────────────────
+const players={};
+let accentIdx=0;
+
+function addPlayer(id){
+  if(players[id]) return;
+  const accent=ACCENT_COLS[accentIdx++%ACCENT_COLS.length];
+  const ch=buildAstronaut(accent);
+  ch.root.position.set((Math.random()-.5)*6,GROUND_Y,(Math.random()-.5)*6);
+  scene.add(ch.root);
+  const tag=document.createElement('div'); tag.className='nametag';
+  tag.textContent=id.slice(-5);
+  tag.style.borderColor='#'+accent.toString(16).padStart(6,'0');
+  document.getElementById('hud').appendChild(tag);
+  const hpTag=document.createElement('div'); hpTag.className='hp-tag';
+  document.getElementById('hud').appendChild(hpTag);
+  players[id]={char:ch,state:{x:0,y:GROUND_Y,z:0,ry:0,wc:0,moving:false,jumping:false,hp:100},nametag:tag,hpTag,accent};
+  refreshCount();
+}
+function removePlayer(id){
+  if(!players[id]) return;
+  scene.remove(players[id].char.root);
+  players[id].nametag.remove(); players[id].hpTag.remove();
+  delete players[id]; refreshCount();
+}
+function refreshCount(){
+  const n=Object.keys(players).length;
+  document.getElementById('playercount').textContent=n?`· ${n+1} online`:'';
+}
+
+// ── Screen projection ─────────────────────────────────────────────────────────
+const _pv=new THREE.Vector3();
+function worldToScreen(wp){
+  _pv.copy(wp).project(camera);
+  return{x:(_pv.x*.5+.5)*window.innerWidth,y:(1-(_pv.y*.5+.5))*window.innerHeight,behind:_pv.z>1};
+}
+
+// ── Shop ──────────────────────────────────────────────────────────────────────
+const SHOP_ITEMS=[
+  {id:'health',icon:'💊',name:'Health Pack',desc:'+50 HP instantly',price:30,max:99,owned:0},
+  {id:'axe',icon:'🪓',name:'Sharp Axe',desc:'+15 damage per hit',price:80,max:3,owned:0},
+  {id:'boots',icon:'👟',name:'Speed Boots',desc:'+1.5 move speed',price:60,max:2,owned:0},
+  {id:'shield',icon:'🛡️',name:'Energy Shield',desc:'10s invincibility',price:50,max:99,owned:0},
+  {id:'maxhp',icon:'❤️',name:'Max HP Up',desc:'+25 max HP',price:100,max:4,owned:0},
+  {id:'magnet',icon:'🧲',name:'Coin Magnet',desc:'2× pickup radius',price:120,max:1,owned:0},
+];
+function buyItem(id){
+  const item=SHOP_ITEMS.find(i=>i.id===id);
+  if(!item||coins<item.price||item.owned>=item.max) return;
+  coins-=item.price; item.owned++;
+  if(id==='health'){playerHP=Math.min(maxHP,playerHP+50);updateHPBar();}
+  if(id==='axe') axeDmg+=15;
+  if(id==='boots') playerSpd+=1.5;
+  if(id==='shield'){hasShield=true;shieldTimer=10;}
+  if(id==='maxhp'){maxHP+=25;playerHP=Math.min(maxHP,playerHP+25);updateHPBar();}
+  updateCoinUI(); renderShop();
+}
+function toggleShop(){
+  const s=document.getElementById('shop');
+  s.classList.toggle('open');
+  if(s.classList.contains('open')) renderShop();
+}
+function renderShop(){
+  document.getElementById('shop-balance').textContent=coins+' coins';
+  document.getElementById('shop-grid').innerHTML=SHOP_ITEMS.map(item=>{
+    const ca=coins<item.price||item.owned>=item.max;
+    return`<div class="shop-item${ca?' cant-afford':''}" onclick="${ca?'':'buyItem(\''+item.id+'\')'}">
+      <div class="item-icon">${item.icon}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-desc">${item.desc}</div>
+      <div class="item-price"><div class="item-price-dot"></div>${item.price}</div>
+      ${item.owned>=item.max?'<div class="item-owned">maxed</div>':item.owned>0?`<div class="item-owned">owned: ${item.owned}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function updateCoinUI(){
+  document.getElementById('coin-count').textContent=coins;
+  if(document.getElementById('shop').classList.contains('open')) renderShop();
+}
+function updateHPBar(){
+  const pct=Math.max(0,playerHP/maxHP*100);
+  const f=document.getElementById('hpbar-fill');
+  f.style.width=pct+'%';
+  f.style.background=pct>50?'#4ade80':pct>25?'#facc15':'#f87171';
+  document.getElementById('hplabel').textContent=Math.ceil(playerHP)+' HP';
+}
+function takeDamage(dmg,source){
+  if(isDead||hasShield) return;
+  playerHP=Math.max(0,playerHP-dmg);
+  updateHPBar();
+  const flash=document.getElementById('dmg-flash');
+  flash.classList.add('hit'); setTimeout(()=>flash.classList.remove('hit'),150);
+  lastDmgTime=Date.now();
+  if(playerHP<=0) startDeath(source);
+}
+
+// ── Death / Respawn ───────────────────────────────────────────────────────────
+let respawnInterval=null;
+function startDeath(source){
+  isDead=true;
+  localChar.root.visible=false;
+  const ds=document.getElementById('death-screen');
+  ds.classList.add('active');
+  document.getElementById('death-killedby').textContent=source?'killed by '+source:'';
+  let countdown=5;
+  document.getElementById('respawn-timer').textContent=countdown;
+  // drop coins
+  spawnCoinsAt(charPos.x,charPos.z,Math.floor(coins*0.3));
+  coins=Math.floor(coins*0.7); updateCoinUI();
+  if(respawnInterval) clearInterval(respawnInterval);
+  respawnInterval=setInterval(()=>{
+    countdown--;
+    document.getElementById('respawn-timer').textContent=countdown;
+    if(countdown<=0){
+      clearInterval(respawnInterval);
+      doRespawn();
+    }
+  },1000);
+}
+function doRespawn(){
+  isDead=false;
+  playerHP=maxHP*0.6; updateHPBar();
+  charPos.set((Math.random()-.5)*12,GROUND_Y,(Math.random()-.5)*12);
+  velY=0; onGround=true;
+  localChar.root.visible=true;
+  document.getElementById('death-screen').classList.remove('active');
+}
+
+// ── Network ───────────────────────────────────────────────────────────────────
+let myPeer=null,myId=null,isHost=false;
+const clientConns={};
+let hostConn=null;
+
+function setStatus(label,isH){
+  document.getElementById('netlabel').textContent=label;
+  document.getElementById('netdot').className='netdot'+(isH?' host':'');
+}
+function getMyState(){
+  return{x:charPos.x,y:charPos.y,z:charPos.z,ry:facingAngle,wc:walkCycle,moving:isMoving,jumping:!onGround,hp:playerHP};
+}
+function hostBroadcast(excludeId){
+  const snap={};
+  for(const id in players) snap[id]=players[id].state;
+  snap[myId]=getMyState();
+  const msg={type:'world',snapshot:snap};
+  for(const id in clientConns){
+    if(id===excludeId) continue;
+    try{if(clientConns[id].open) clientConns[id].send(msg);}catch(_){}
+  }
+}
+function sendDamage(targetId,dmg){
+  // tell host or target about damage
+  const msg={type:'damage',targetId,dmg,from:myId};
+  if(isHost){
+    // apply directly if target is a client
+    if(clientConns[targetId]&&clientConns[targetId].open) clientConns[targetId].send(msg);
+  } else if(hostConn&&hostConn.open){
+    hostConn.send(msg);
+  }
+}
+function setupClientConn(conn){
+  conn.on('open',()=>{
+    addPlayer(conn.peer); clientConns[conn.peer]=conn;
+    setStatus(`host · ${Object.keys(clientConns).length} clients`,true); refreshCount();
   });
-  conn.on('data', data => {
-    // client sent their state → update + relay world to everyone
-    if (data.type === 'state' && players[conn.peer]) {
-      players[conn.peer].state = data.state;
-      hostBroadcast(conn.peer);
+  conn.on('data',data=>{
+    if(data.type==='state'&&players[conn.peer]){
+      players[conn.peer].state=data.state; hostBroadcast(conn.peer);
+    }
+    if(data.type==='damage'){
+      // relay to target
+      if(data.targetId===myId){
+        takeDamage(data.dmg,'player '+data.from.slice(-4));
+      } else if(clientConns[data.targetId]&&clientConns[data.targetId].open){
+        clientConns[data.targetId].send(data);
+      }
     }
   });
-  conn.on('close',  () => { removePlayer(conn.peer); delete clientConns[conn.peer]; setStatus(`host · ${Object.keys(clientConns).length} clients`, true); });
-  conn.on('error',  () => { removePlayer(conn.peer); delete clientConns[conn.peer]; });
+  conn.on('close',()=>{removePlayer(conn.peer);delete clientConns[conn.peer];setStatus(`host · ${Object.keys(clientConns).length} clients`,true);});
+  conn.on('error',()=>{removePlayer(conn.peer);delete clientConns[conn.peer];});
 }
-
-function tryBecomeHost() {
-  myPeer = new Peer(HOST_ID, { debug:0 });
-  myPeer.on('open', id => {
-    myId = id; isHost = true;
-    setStatus('host · 0 clients', true);
-    startGame();
-  });
-  myPeer.on('connection', conn => setupClientConn(conn));
-  myPeer.on('error', err => {
-    if (err.type === 'unavailable-id') {
-      // host already exists → join as client
-      myPeer.destroy();
-      joinAsClient();
-    } else {
-      splashStatus('error: ' + err.type + ' — refresh');
-    }
+function tryBecomeHost(){
+  myPeer=new Peer(HOST_ID,{debug:0});
+  myPeer.on('open',id=>{myId=id;isHost=true;setStatus('host · 0 clients',true);startGame();});
+  myPeer.on('connection',conn=>setupClientConn(conn));
+  myPeer.on('error',err=>{
+    if(err.type==='unavailable-id'){myPeer.destroy();joinAsClient();}
+    else splashStatus('error: '+err.type+' — refresh');
   });
 }
-
-function joinAsClient() {
-  myPeer = new Peer({ debug:0 });
-  myPeer.on('open', id => {
-    myId = id;
-    hostConn = myPeer.connect(HOST_ID, { reliable:false, serialization:'json' });
-    hostConn.on('open', () => {
-      setStatus('connected', false);
-      startGame();
-    });
-    hostConn.on('data', data => {
-      if (data.type === 'world') {
-        // full world snapshot from host
-        for (const id in data.snapshot) {
-          if (id === myId) continue;
-          if (!players[id]) addPlayer(id);
-          players[id].state = data.snapshot[id];
-        }
-        // remove players no longer in snapshot
-        for (const id in players) {
-          if (!data.snapshot[id]) removePlayer(id);
-        }
+function joinAsClient(){
+  myPeer=new Peer({debug:0});
+  myPeer.on('open',id=>{
+    myId=id;
+    hostConn=myPeer.connect(HOST_ID,{reliable:false,serialization:'json'});
+    hostConn.on('open',()=>{setStatus('connected',false);startGame();});
+    hostConn.on('data',data=>{
+      if(data.type==='world'){
+        for(const id in data.snapshot){if(id===myId) continue; if(!players[id]) addPlayer(id); players[id].state=data.snapshot[id];}
+        for(const id in players){if(!data.snapshot[id]) removePlayer(id);}
+      }
+      if(data.type==='damage'&&data.targetId===myId){
+        takeDamage(data.dmg,'player '+data.from.slice(-4));
       }
     });
-    hostConn.on('close', () => { setStatus('disconnected', false); });
-    hostConn.on('error', () => { setStatus('connection error', false); });
+    hostConn.on('close',()=>setStatus('disconnected',false));
+    hostConn.on('error',()=>setStatus('connection error',false));
   });
-  myPeer.on('error', err => splashStatus('peer error: ' + err.type));
+  myPeer.on('error',err=>splashStatus('peer error: '+err.type));
 }
+setInterval(()=>{
+  if(!myId||isDead) return;
+  if(isHost) hostBroadcast(null);
+  else if(hostConn&&hostConn.open) try{hostConn.send({type:'state',state:getMyState()});}catch(_){}
+},1000/BROADCAST_HZ);
 
-// ─── Broadcast loop ───────────────────────────────────────────────────────────
-setInterval(() => {
-  if (!myId) return;
-  if (isHost) {
-    hostBroadcast(null); // send world to all clients
-  } else if (hostConn && hostConn.open) {
-    try { hostConn.send({ type:'state', state:getMyState() }); } catch(_){}
-  }
-}, 1000 / BROADCAST_HZ);
-
-// ─── Input ────────────────────────────────────────────────────────────────────
-const keys = {};
-window.addEventListener('keydown', e => {
+// ── Input ─────────────────────────────────────────────────────────────────────
+const keys={};
+window.addEventListener('keydown',e=>{
   keys[e.code]=true; hlKey(e.code,true);
   if(e.code==='Space') e.preventDefault();
+  if(e.code==='KeyB') toggleShop();
 });
-window.addEventListener('keyup',   e => { keys[e.code]=false; hlKey(e.code,false); });
-function hlKey(code,on){
+window.addEventListener('keyup',e=>{keys[e.code]=false;hlKey(e.code,false);});
+function hlKey(c,on){
   const m={KeyW:'k-w',KeyA:'k-a',KeyS:'k-s',KeyD:'k-d',Space:'k-space'};
-  const el=document.getElementById(m[code]); if(el) el.classList.toggle('active',on);
+  const el=document.getElementById(m[c]); if(el) el.classList.toggle('active',on);
 }
 
-// ─── Mouse look ───────────────────────────────────────────────────────────────
-let camYaw=0, camPitch=0.3;
-canvas.addEventListener('click',()=>{ if(!document.activeElement?.matches('input')) canvas.requestPointerLock(); });
+// ── GTA Camera ────────────────────────────────────────────────────────────────
+let camYaw=Math.PI, camPitch=0.35, camDist=5.5;
+let rmbDown=false, lastMx=0, lastMy=0;
+let camAutoYaw=Math.PI; // auto-follows movement
+
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===2){rmbDown=true;lastMx=e.clientX;lastMy=e.clientY;canvas.classList.add('rotating');}
+});
+window.addEventListener('mouseup',e=>{
+  if(e.button===2){rmbDown=false;canvas.classList.remove('rotating');}
+});
 window.addEventListener('mousemove',e=>{
-  if(!document.pointerLockElement) return;
-  camYaw  -=e.movementX*0.002;
-  camPitch-=e.movementY*0.002;
-  camPitch =Math.max(-0.05,Math.min(0.9,camPitch));
+  if(!rmbDown) return;
+  const dx=e.clientX-lastMx, dy=e.clientY-lastMy;
+  camYaw-=dx*0.004; camPitch-=dy*0.003;
+  camPitch=Math.max(0.08,Math.min(1.1,camPitch));
+  lastMx=e.clientX; lastMy=e.clientY;
 });
-document.addEventListener('pointerlockchange',()=>{
-  document.getElementById('statusbar').textContent = document.pointerLockElement
-    ? 'ESC to release · WASD = move · SPACE = jump'
-    : 'click scene · drag mouse = camera · WASD = move · SPACE = jump';
+canvas.addEventListener('wheel',e=>{
+  camDist=Math.max(2,Math.min(12,camDist+e.deltaY*0.01));
+},{passive:true});
+
+// ── Axe swing ─────────────────────────────────────────────────────────────────
+let swingCD=0;
+window.addEventListener('mousedown',e=>{
+  if(e.button!==0) return;
+  if(document.getElementById('shop').classList.contains('open')) return;
+  if(isDead) return;
+  const now=Date.now();
+  if(now-swingCD<480) return;
+  swingCD=now;
+  localChar.rArm.pivot.rotation.x=-1.3;
+  setTimeout(()=>{localChar.rArm.pivot.rotation.x=0;},280);
+
+  // hit zombies
+  for(let i=zombies.length-1;i>=0;i--){
+    const z=zombies[i];
+    const dx=charPos.x-z.root.position.x, dz=charPos.z-z.root.position.z;
+    if(Math.sqrt(dx*dx+dz*dz)<2.2){
+      z.hp-=axeDmg;
+      showPopup(z.root.position.x,z.root.position.z,'-'+axeDmg,'dmg-popup');
+      if(z.hp<=0) killZombie(z,i);
+    }
+  }
+
+  // friendly fire — hit nearby players
+  for(const id in players){
+    const p=players[id];
+    const dx=charPos.x-p.char.root.position.x, dz=charPos.z-p.char.root.position.z;
+    if(Math.sqrt(dx*dx+dz*dz)<2.0){
+      sendDamage(id,Math.floor(axeDmg*0.6));
+      showPopup(p.char.root.position.x,p.char.root.position.z,'FF! -'+Math.floor(axeDmg*0.6),'dmg-popup');
+    }
+  }
 });
 
-// ─── Clock ────────────────────────────────────────────────────────────────────
-const clock = new THREE.Clock();
-const camTarget = new THREE.Vector3(0,0.8,0);
-let gameStarted = false;
+// ── Clock & state ─────────────────────────────────────────────────────────────
+const clock=new THREE.Clock();
+const camTargetV=new THREE.Vector3(0,0.8,0);
+let gameStarted=false,lastZombieSpawn=0;
+// ragdoll pieces
+const pieces=[];
 
-function startGame() {
+function startGame(){
   document.getElementById('splash').style.display='none';
   document.getElementById('hud').style.display='';
-  if (!gameStarted) { gameStarted=true; animate(); }
+  updateHPBar(); updateCoinUI();
+  for(let i=0;i<5;i++) spawnZombie();
+  lastZombieSpawn=Date.now();
+  if(!gameStarted){gameStarted=true;animate();}
 }
-
-// ─── Splash helpers ───────────────────────────────────────────────────────────
-function splashStatus(msg) {
+function splashStatus(msg){
   document.getElementById('splash-status').textContent=msg;
   document.getElementById('join-btn').disabled=false;
 }
-
 document.getElementById('join-btn').addEventListener('click',()=>{
   document.getElementById('join-btn').disabled=true;
   document.getElementById('splash-status').textContent='connecting…';
   tryBecomeHost();
 });
 
-// ─── Main loop ────────────────────────────────────────────────────────────────
+// ── Main loop ─────────────────────────────────────────────────────────────────
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.05);
+  const now=Date.now();
+  const t=clock.elapsedTime;
 
-  // Local movement
-  const iFwd=keys['KeyW']?1:keys['KeyS']?-1:0;
-  const iRgt=keys['KeyD']?1:keys['KeyA']?-1:0;
-  isMoving=iFwd!==0||iRgt!==0;
+  if(hasShield){shieldTimer-=dt;if(shieldTimer<=0){hasShield=false;}}
+  if(now-lastDmgTime>5000&&playerHP<maxHP&&!isDead){
+    playerHP=Math.min(maxHP,playerHP+dt*2);updateHPBar();
+  }
+  if(now-lastZombieSpawn>ZOMBIE_SPAWN_MS){spawnZombie();lastZombieSpawn=now;}
 
-  const mdx=Math.sin(camYaw)*iFwd - Math.cos(camYaw)*iRgt;
-  const mdz=Math.cos(camYaw)*iFwd + Math.sin(camYaw)*iRgt;
-  const mlen=Math.sqrt(mdx*mdx+mdz*mdz);
-  const nx=mlen>0.01?mdx/mlen:0, nz=mlen>0.01?mdz/mlen:0;
+  if(!isDead){
+    // movement
+    const iFwd=keys['KeyW']?1:keys['KeyS']?-1:0;
+    const iRgt=keys['KeyD']?1:keys['KeyA']?-1:0;
+    isMoving=iFwd!==0||iRgt!==0;
+    const mdx=Math.sin(camYaw)*iFwd-Math.cos(camYaw)*iRgt;
+    const mdz=Math.cos(camYaw)*iFwd+Math.sin(camYaw)*iRgt;
+    const ml=Math.sqrt(mdx*mdx+mdz*mdz);
+    const nx=ml>0.01?mdx/ml:0,nz=ml>0.01?mdz/ml:0;
+    charPos.x+=nx*playerSpd*dt;
+    charPos.z+=nz*playerSpd*dt;
+    const fd=Math.sqrt(charPos.x*charPos.x+charPos.z*charPos.z);
+    if(fd>18){charPos.x*=18/fd;charPos.z*=18/fd;}
+    if(keys['Space']&&onGround){velY=JUMP_V;onGround=false;keys['Space']=false;}
+    velY+=GRAVITY*dt; charPos.y+=velY*dt;
+    if(charPos.y<=GROUND_Y){charPos.y=GROUND_Y;velY=0;onGround=true;}
+    if(isMoving){
+      const ta=Math.atan2(nx,nz); let d=ta-facingAngle;
+      while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2;
+      facingAngle+=d*Math.min(1,dt*12);
+      // auto-rotate camera yaw toward movement
+      if(!rmbDown){
+        let cd=ta+Math.PI-camYaw;
+        while(cd>Math.PI)cd-=Math.PI*2; while(cd<-Math.PI)cd+=Math.PI*2;
+        camYaw+=cd*dt*1.2;
+      }
+    }
+    if(isMoving&&onGround) walkCycle+=dt*3.5; else if(!onGround) walkCycle+=dt*1.2;
+    const bob=(isMoving&&onGround)?Math.abs(Math.sin(walkCycle))*0.04:0;
+    localChar.root.position.set(charPos.x,charPos.y+bob,charPos.z);
+    localChar.root.rotation.y=facingAngle;
+    applyAnim(localChar,walkCycle,isMoving,!onGround);
+    charLight.position.set(charPos.x,charPos.y+1,charPos.z);
 
-  charPos.x+=nx*MOVE_SPD*dt;
-  charPos.z+=nz*MOVE_SPD*dt;
-
-  // Arena clamp
-  const fd=Math.sqrt(charPos.x*charPos.x+charPos.z*charPos.z);
-  if(fd>15){charPos.x*=15/fd;charPos.z*=15/fd;}
-
-  // Jump
-  if(keys['Space']&&onGround){velY=JUMP_V;onGround=false;keys['Space']=false;}
-  velY+=GRAVITY*dt;
-  charPos.y+=velY*dt;
-  if(charPos.y<=GROUND_Y){charPos.y=GROUND_Y;velY=0;onGround=true;}
-
-  // Facing
-  if(isMoving){
-    const ta=Math.atan2(nx,nz);
-    let d=ta-facingAngle;
-    while(d> Math.PI)d-=Math.PI*2;
-    while(d<-Math.PI)d+=Math.PI*2;
-    facingAngle+=d*Math.min(1,dt*12);
+    // shield glow
+    charLight.color.setHex(hasShield?0x38bdf8:0xb07af8);
+    charLight.intensity=hasShield?8:5;
   }
 
-  if(isMoving&&onGround) walkCycle+=dt*3.5;
-  else if(!onGround)     walkCycle+=dt*1.2;
+  // coin pickup
+  const magnet=SHOP_ITEMS.find(i=>i.id==='magnet').owned>0;
+  const pickR=magnet?COIN_R*2.2:COIN_R;
+  for(let i=droppedCoins.length-1;i>=0;i--){
+    const c=droppedCoins[i];
+    c.mesh.rotation.y+=dt*2.2;
+    c.mesh.position.y=0.22+Math.sin(t*3+i)*0.06;
+    const dx=charPos.x-c.mesh.position.x,dz=charPos.z-c.mesh.position.z;
+    if(!isDead&&Math.sqrt(dx*dx+dz*dz)<pickR){
+      showPopup(c.mesh.position.x,c.mesh.position.z,'+'+c.value,'coin-popup');
+      coins+=c.value; updateCoinUI();
+      scene.remove(c.mesh); droppedCoins.splice(i,1); continue;
+    }
+    if(now-c.spawnT>30000){scene.remove(c.mesh);droppedCoins.splice(i,1);}
+  }
 
-  const bob=(isMoving&&onGround)?Math.abs(Math.sin(walkCycle))*0.04:0;
-  localChar.root.position.set(charPos.x,charPos.y+bob,charPos.z);
-  localChar.root.rotation.y=facingAngle;
-  applyAnim(localChar,walkCycle,isMoving,!onGround);
-  charLight.position.set(charPos.x,charPos.y+1,charPos.z);
+  // zombies
+  for(let i=zombies.length-1;i>=0;i--){
+    const z=zombies[i];
+    z.walkT+=dt*2.8;
+    const zp=z.root.position;
+    const dx=charPos.x-zp.x,dz=charPos.z-zp.z;
+    const dist=Math.sqrt(dx*dx+dz*dz);
+    const moving=dist>0.7;
+    if(moving){
+      zp.x+=dx/dist*1.9*dt;
+      zp.z+=dz/dist*1.9*dt;
+      z.root.rotation.y=Math.atan2(dx,dz);
+    }
+    zp.y=GROUND_Y+Math.abs(Math.sin(z.walkT))*0.03;
+    applyZombieAnim(z,z.walkT,moving);
+    if(!isDead&&dist<1.0&&now-z.lastAtk>1400){z.lastAtk=now;takeDamage(8,'zombie');}
+  }
 
-  // Remote players
+  // ragdoll pieces
+  for(let i=pieces.length-1;i>=0;i--){
+    const p=pieces[i]; p.age+=dt;
+    p.mesh.position.x+=p.vel.x*dt;
+    p.mesh.position.y+=p.vel.y*dt;
+    p.mesh.position.z+=p.vel.z*dt;
+    p.vel.y-=12*dt;
+    if(p.mesh.position.y<0){p.mesh.position.y=0;p.vel.y*=-0.3;p.vel.x*=0.7;p.vel.z*=0.7;}
+    p.mesh.rotation.x+=p.vel.rx*dt;
+    p.mesh.rotation.y+=p.vel.ry*dt;
+    if(p.age>4){scene.remove(p.mesh);pieces.splice(i,1);}
+  }
+  // collect pieces from killed zombies
+  for(const z of zombies){
+    if(z.pieces){
+      for(let i=z.pieces.length-1;i>=0;i--){
+        const piece=z.pieces[i]; piece.age+=dt;
+        piece.mesh.position.x+=piece.vel.x*dt;
+        piece.mesh.position.y+=piece.vel.y*dt;
+        piece.mesh.position.z+=piece.vel.z*dt;
+        piece.vel.y-=12*dt;
+        if(piece.mesh.position.y<0){piece.mesh.position.y=0;piece.vel.y*=-0.3;piece.vel.x*=0.7;piece.vel.z*=0.7;}
+        piece.mesh.rotation.x+=piece.vel.rx*dt;
+        piece.mesh.rotation.y+=piece.vel.ry*dt;
+        if(piece.age>4){scene.remove(piece.mesh);z.pieces.splice(i,1);}
+      }
+    }
+  }
+
+  // remote players
   for(const id in players){
-    const p=players[id], s=p.state;
+    const p=players[id],s=p.state;
     p.char.root.position.x+=(s.x-p.char.root.position.x)*0.2;
     p.char.root.position.y+=(s.y-p.char.root.position.y)*0.2;
     p.char.root.position.z+=(s.z-p.char.root.position.z)*0.2;
     let da=s.ry-p.char.root.rotation.y;
-    while(da> Math.PI)da-=Math.PI*2;
-    while(da<-Math.PI)da+=Math.PI*2;
+    while(da>Math.PI)da-=Math.PI*2; while(da<-Math.PI)da+=Math.PI*2;
     p.char.root.rotation.y+=da*0.2;
     applyAnim(p.char,s.wc,s.moving,s.jumping);
-
-    // Nametag
-    const tp=new THREE.Vector3(p.char.root.position.x,p.char.root.position.y+1.4,p.char.root.position.z);
+    // nametag
+    const tp=new THREE.Vector3(p.char.root.position.x,p.char.root.position.y+1.5,p.char.root.position.z);
     const sc=worldToScreen(tp);
-    if(sc.behind){p.nametag.style.display='none';}
-    else{p.nametag.style.display='';p.nametag.style.left=sc.x+'px';p.nametag.style.top=sc.y+'px';}
+    if(sc.behind){p.nametag.style.display='none';p.hpTag.style.display='none';}
+    else{
+      p.nametag.style.display=''; p.nametag.style.left=sc.x+'px'; p.nametag.style.top=sc.y+'px';
+      const hp2=worldToScreen(new THREE.Vector3(p.char.root.position.x,p.char.root.position.y+1.8,p.char.root.position.z));
+      p.hpTag.style.display=''; p.hpTag.style.left=hp2.x+'px'; p.hpTag.style.top=(hp2.y-16)+'px';
+      p.hpTag.textContent=s.hp!=null?Math.ceil(s.hp)+' hp':'';
+    }
   }
 
-  // Camera
-  const cox=Math.sin(camYaw)*4.5, coz=Math.cos(camYaw)*4.5;
-  const ix=charPos.x-cox, iy=charPos.y+1.8+Math.sin(camPitch)*4.5, iz=charPos.z-coz;
-  camera.position.x+=(ix-camera.position.x)*0.1;
-  camera.position.y+=(iy-camera.position.y)*0.1;
-  camera.position.z+=(iz-camera.position.z)*0.1;
-  camTarget.x+=(charPos.x    -camTarget.x)*0.15;
-  camTarget.y+=(charPos.y+0.8-camTarget.y)*0.15;
-  camTarget.z+=(charPos.z    -camTarget.z)*0.15;
-  camera.lookAt(camTarget);
+  // GTA camera — orbit behind player, RMB overrides
+  const cx=charPos.x-Math.sin(camYaw)*camDist;
+  const cy=charPos.y+1.6+Math.sin(camPitch)*camDist;
+  const cz=charPos.z-Math.cos(camYaw)*camDist;
+  camera.position.x+=(cx-camera.position.x)*0.1;
+  camera.position.y+=(cy-camera.position.y)*0.1;
+  camera.position.z+=(cz-camera.position.z)*0.1;
+  camTargetV.x+=(charPos.x-camTargetV.x)*0.15;
+  camTargetV.y+=(charPos.y+0.8-camTargetV.y)*0.15;
+  camTargetV.z+=(charPos.z-camTargetV.z)*0.15;
+  camera.lookAt(camTargetV);
 
   renderer.render(scene,camera);
 }

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Vibe Rooms 🚀</title>
+    <style>
+        :root { --bg: #050510; --neon-cyan: #00ffff; --neon-pink: #ff00ff; --glass: rgba(20, 20, 40, 0.8); }
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background-color: var(--bg); color: white; }
+        
+        /* 3D Canvas Background */
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
+        
+        /* UI Overlay */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; display: flex; flex-direction: column; }
+        
+        /* Header & Tabs */
+        .header { background: var(--glass); padding: 15px; border-bottom: 1px solid var(--neon-cyan); display: flex; gap: 20px; pointer-events: auto; }
+        .tab-btn { background: transparent; color: white; border: 1px solid #555; padding: 10px 20px; cursor: pointer; text-transform: uppercase; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { border-color: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); color: var(--neon-cyan); }
+        .tab-btn.pink { border-color: var(--neon-pink); }
+        .tab-btn.pink.active { border-color: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); color: var(--neon-pink); }
+
+        /* Content Areas */
+        .content { flex: 1; padding: 20px; display: none; pointer-events: auto; width: 400px; background: var(--glass); border-right: 1px solid var(--neon-cyan); overflow-y: auto; }
+        .content.active { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Forms & Inputs */
+        textarea, input { background: rgba(0,0,0,0.5); border: 1px solid #555; color: var(--neon-cyan); padding: 10px; font-family: monospace; width: 90%; resize: vertical; }
+        button { background: var(--neon-cyan); color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 5px; }
+        button:hover { box-shadow: 0 0 15px var(--neon-cyan); }
+        button.pink-btn { background: var(--neon-pink); }
+        button.pink-btn:hover { box-shadow: 0 0 15px var(--neon-pink); }
+
+        .chat-box { flex: 1; border: 1px solid #555; padding: 10px; overflow-y: auto; min-height: 150px; background: rgba(0,0,0,0.3); }
+        .info-panel { font-size: 0.9em; color: #aaa; border-left: 3px solid var(--neon-cyan); padding-left: 10px; margin-bottom: 10px; }
+        
+        /* Controls Hint */
+        .controls { position: absolute; bottom: 20px; right: 20px; background: var(--glass); padding: 10px; border: 1px solid var(--neon-pink); color: var(--neon-pink); text-align: right; pointer-events: none; }
+    </style>
+    <!-- Подключаем Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="header">
+            <button class="tab-btn active" onclick="switchTab('public')">🌐 Public Room (BaaS)</button>
+            <button class="tab-btn pink" onclick="switchTab('private')">🔒 Private Room (WebRTC)</button>
+        </div>
+
+        <!-- ТАБ 1: PUBLIC ROOM -->
+        <div id="tab-public" class="content active">
+            <h2 style="color: var(--neon-cyan)">Public Echo Room</h2>
+            <div class="info-panel">
+                <strong>Как реализовано:</strong><br>
+                Здесь мы используем классический подход с сервером (WebSocket). Сейчас мы подключены к публичному Echo-серверу (Postman). <br><br>
+                Когда ты двигаешься (WASD), твой клиент отправляет JSON с координатами на сервер. Сервер пересылает этот JSON всем в комнате. 
+                В данном случае он возвращает его обратно тебе, поэтому синяя сфера зеркально повторяет твои движения с задержкой сети (пинг).
+            </div>
+            <div id="public-log" class="chat-box" style="height: 200px;"></div>
+        </div>
+
+        <!-- ТАБ 2: PRIVATE ROOM -->
+        <div id="tab-private" class="content" style="border-right-color: var(--neon-pink)">
+            <h2 style="color: var(--neon-pink)">P2P Private Room</h2>
+            <div class="info-panel" style="border-left-color: var(--neon-pink)">
+                <strong>Как реализовано:</strong><br>
+                Никаких серверов! Прямое соединение WebRTC Data Channel.
+                <br>1. Игрок А жмет "Создать", копирует токен и кидает Игроку Б.
+                <br>2. Игрок Б вставляет токен, жмет "Присоединиться", копирует новый токен ответа и кидает Игроку А.
+                <br>3. Игрок А вставляет ответ и жмет "Подтвердить". Магия! 🔮
+            </div>
+
+            <div>
+                <button class="pink-btn" onclick="createOffer()">1. Создать комнату</button>
+                <textarea id="my-token" rows="3" placeholder="Тут появится твой токен... скопируй его другу" readonly></textarea>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <textarea id="friend-token" rows="3" placeholder="Вставь сюда токен от друга..."></textarea>
+                <button class="pink-btn" onclick="joinRoom()">2. Присоединиться (Ответить)</button>
+                <button class="pink-btn" onclick="confirmJoin()" style="background: #fff; color: #000">3. Подтвердить ответ</button>
+            </div>
+
+            <h3 style="color: var(--neon-pink); margin-top: 20px;">P2P Chat</h3>
+            <div id="private-chat" class="chat-box"></div>
+            <div style="display: flex; margin-top: 5px;">
+                <input type="text" id="chat-msg" placeholder="Сообщение..." onkeypress="if(event.key === 'Enter') sendP2PMessage()">
+                <button class="pink-btn" onclick="sendP2PMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        Управление аватаром:<br>
+        <strong>W A S D</strong> - ходить
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. НАСТРОЙКА THREE.JS (НЕОНОВАЯ КОМНАТА)
+        // ==========================================
+        const scene = new THREE.Scene();
+        // Добавляем легкий туман для глубины
+        scene.fog = new THREE.FogExp2(0x050510, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Неоновый пол (Сетка)
+        const gridHelper = new THREE.GridHelper(40, 40, 0x00ffff, 0xff00ff);
+        gridHelper.position.y = -0.5;
+        scene.add(gridHelper);
+
+        // Мой Аватар (Неоновый розовый куб)
+        const myGeo = new THREE.BoxGeometry(1, 1, 1);
+        const myMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xaa00aa, roughness: 0.1 });
+        const myAvatar = new THREE.Mesh(myGeo, myMat);
+        scene.add(myAvatar);
+
+        // Аватар друга (Неоновая голубая сфера)
+        const otherGeo = new THREE.SphereGeometry(0.6, 32, 32);
+        const otherMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00aaaa, roughness: 0.1 });
+        const otherAvatar = new THREE.Mesh(otherGeo, otherMat);
+        otherAvatar.position.set(2, 0, 2);
+        scene.add(otherAvatar);
+
+        // Освещение
+        const light = new THREE.AmbientLight(0x222222);
+        scene.add(light);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Управление WASD
+        const keys = { w: false, a: false, s: false, d: false };
+        window.addEventListener('keydown', (e) => { 
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = true; 
+        });
+        window.addEventListener('keyup', (e) => { 
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = false; 
+        });
+
+        // ==========================================
+        // 2. ЛОГИКА ВКЛАДОК И СИНХРОНИЗАЦИИ
+        // ==========================================
+        let currentMode = 'public'; // 'public' или 'private'
+
+        function switchTab(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            
+            if (mode === 'public') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'public\')"]').classList.add('active');
+                document.getElementById('tab-public').classList.add('active');
+                otherAvatar.material.color.setHex(0x00ffff); // Голубой для паблика
+                otherAvatar.material.emissive.setHex(0x00aaaa);
+            } else {
+                document.querySelector('.tab-btn.pink').classList.add('active');
+                document.getElementById('tab-private').classList.add('active');
+                otherAvatar.material.color.setHex(0xffaa00); // Оранжевый для привата
+                otherAvatar.material.emissive.setHex(0xaa5500);
+            }
+        }
+
+        // ==========================================
+        // 3. PUBLIC ROOM (WebSocket Echo Server)
+        // ==========================================
+        // Используем публичный echo-сервер для демонстрации задержки сети и пакетов
+        const ws = new WebSocket('wss://ws.postman-echo.com/raw');
+        const pubLog = document.getElementById('public-log');
+        let lastWsSend = 0;
+
+        ws.onopen = () => pubLog.innerHTML += '<div>[SYSTEM] Подключено к облачному серверу ☁️</div>';
+        
+        ws.onmessage = (event) => {
+            if (currentMode !== 'public') return;
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'move') {
+                    // Сервер вернул нам наши же координаты (эхо), двигаем чужой аватар туда
+                    // В реальном приложении сервер бы рассылал чужие координаты
+                    otherAvatar.position.x = data.x + 2; // +2 чтобы не сливались
+                    otherAvatar.position.z = data.z + 2;
+                }
+            } catch (e) {}
+        };
+
+        function sendPublicMove(x, z) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'move', x, z }));
+            }
+        }
+
+        // ==========================================
+        // 4. PRIVATE ROOM (WebRTC P2P)
+        // ==========================================
+        const peer = new RTCPeerConnection({ iceServers:[{ urls: 'stun:stun.l.google.com:19302' }] });
+        let dataChannel;
+
+        // Когда мы собрали все данные для соединения (ICE кандидаты), выдаем их пользователю
+        peer.onicegatheringstatechange = () => {
+            if (peer.iceGatheringState === 'complete') {
+                const token = btoa(JSON.stringify(peer.localDescription));
+                document.getElementById('my-token').value = token;
+                logP2P("[SYSTEM] Токен сгенерирован! Скопируй его.");
+            }
+        };
+
+        // Обработка входящего P2P соединения (для Игрока Б)
+        peer.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            setupDataChannel();
+        };
+
+        function setupDataChannel() {
+            dataChannel.onopen = () => logP2P("🟢 P2P СОЕДИНЕНИЕ УСТАНОВЛЕНО! Серверы больше не нужны.");
+            dataChannel.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'chat') {
+                    logP2P(`[Друг]: ${data.text}`, '#ffaa00');
+                } else if (data.type === 'move' && currentMode === 'private') {
+                    otherAvatar.position.x = data.x;
+                    otherAvatar.position.z = data.z;
+                }
+            };
+        }
+
+        // ШАГ 1: Игрок А создает предложение (Offer)
+        async function createOffer() {
+            dataChannel = peer.createDataChannel('neon-channel');
+            setupDataChannel();
+            const offer = await peer.createOffer();
+            await peer.setLocalDescription(offer);
+            logP2P("[SYSTEM] Создаем комнату... генерируем ключи...");
+        }
+
+        // ШАГ 2: Игрок Б вставляет токен Игрока А и создает Ответ (Answer)
+        async function joinRoom() {
+            const friendToken = document.getElementById('friend-token').value;
+            if(!friendToken) return alert("Вставь токен друга!");
+            const offer = JSON.parse(atob(friendToken));
+            await peer.setRemoteDescription(offer);
+            const answer = await peer.createAnswer();
+            await peer.setLocalDescription(answer);
+            logP2P("[SYSTEM] Подключаемся... генерируем ответный ключ...");
+        }
+
+        // ШАГ 3: Игрок А вставляет токен-ответ от Игрока Б
+        async function confirmJoin() {
+            const friendToken = document.getElementById('friend-token').value;
+            if(!friendToken) return alert("Вставь токен-ответ друга!");
+            const answer = JSON.parse(atob(friendToken));
+            await peer.setRemoteDescription(answer);
+            logP2P("[SYSTEM] Ключи приняты. Устанавливаем P2P туннель...");
+        }
+
+        // Отправка чата по P2P
+        function sendP2PMessage() {
+            const input = document.getElementById('chat-msg');
+            const text = input.value;
+            if (text && dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'chat', text }));
+                logP2P(`[Я]: ${text}`, '#ff00ff');
+                input.value = '';
+            }
+        }
+
+        function logP2P(msg, color = "#fff") {
+            const chat = document.getElementById('private-chat');
+            chat.innerHTML += `<div style="color:${color}; margin-bottom:5px;">${msg}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function sendPrivateMove(x, z) {
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'move', x, z }));
+            }
+        }
+
+        // ==========================================
+        // 5. ИГРОВОЙ ЦИКЛ (ANIMATION LOOP)
+        // ==========================================
+        const speed = 0.1;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            let moved = false;
+            if (keys.w) { myAvatar.position.z -= speed; moved = true; }
+            if (keys.s) { myAvatar.position.z += speed; moved = true; }
+            if (keys.a) { myAvatar.position.x -= speed; moved = true; }
+            if (keys.d) { myAvatar.position.x += speed; moved = true; }
+
+            // Если аватар двинулся, отправляем координаты
+            if (moved) {
+                const now = Date.now();
+                if (now - lastWsSend > 50) { // Ограничиваем до 20 пакетов в сек
+                    if (currentMode === 'public') {
+                        sendPublicMove(myAvatar.position.x, myAvatar.position.z);
+                    } else if (currentMode === 'private') {
+                        sendPrivateMove(myAvatar.position.x, myAvatar.position.z);
+                    }
+                    lastWsSend = now;
+                }
+            }
+
+            // Камера плавно следует за аватаром
+            camera.position.x += (myAvatar.position.x - camera.position.x) * 0.1;
+            camera.position.z += (myAvatar.position.z + 10 - camera.position.z) * 0.1;
+
+            renderer.render(scene, camera);
+        }
+        
+        // Ресайз окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
